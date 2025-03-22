@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Metro de Puebla</title>
-    <meta charset="utf-8" />
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metro de Puebla</title>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js" crossorigin="anonymous"></script>
+
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
     <style>
         body {
             margin: 0;
@@ -13,6 +18,7 @@
             font-family: sans-serif;
             background-color: #f8f8f8;
         }
+
         #map {
             height: 100vh;
             width: 100vw;
@@ -21,6 +27,7 @@
             left: 0;
             z-index: 1;
         }
+
         .tab-buttons {
             display: flex;
             position: absolute;
@@ -29,8 +36,10 @@
             transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.7);
             border-radius: 5px;
+            overflow: hidden;
             z-index: 2;
         }
+
         .tab-button {
             padding: 10px 20px;
             border: none;
@@ -38,112 +47,160 @@
             background-color: transparent;
             color: #333;
         }
+
         .tab-button.active {
             background-color: #d0d0d0;
         }
+
         .tab-content {
             display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .overlay {
             position: absolute;
             top: 80px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.9);
             padding: 20px;
             border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             z-index: 2;
         }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .linea-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .linea-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
         .download-button {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            display: block;
+            margin-top: 10px;
+            background-color: #4a90e2;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        #lineas button {
             background-color: #4a90e2;
             color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
+            margin: 5px 0;
             cursor: pointer;
-            z-index: 2;
+            width: 100%;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <!-- Pestañas -->
     <div class="tab-buttons">
         <div class="tab-button active" data-tab="mapa">Mapa</div>
         <div class="tab-button" data-tab="lineas">Líneas</div>
     </div>
+
+    <!-- Contenido: Mapa -->
     <div class="tab-content active" id="mapa">
-        <div class="overlay">
-            <h1>Metro de Puebla</h1>
-            <p>Mapa interactivo de las líneas del metro de Puebla.</p>
-        </div>
+        <h2>Metro de Puebla</h2>
+        <p>Mapa interactivo de las líneas del metro de Puebla.</p>
+
+        <!-- Google AdSense -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="TU-CODIGO-CLIENTE"
+             data-ad-slot="TU-CODIGO-SLOT"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+
         <button class="download-button">Descargar Mapa</button>
     </div>
+
+    <!-- Contenido: Líneas -->
     <div class="tab-content" id="lineas">
-        <button>Línea 1</button>
-        <button>Línea 2</button>
-        <button>Línea 3</button>
+        <h2>Selecciona una línea:</h2>
+        <button onclick="resaltarLinea('Linea 1')">Línea 1</button>
+        <button onclick="resaltarLinea('Linea 2')">Línea 2</button>
+        <button onclick="resaltarLinea('Linea 3')">Línea 3</button>
+
+        <!-- Google AdSense -->
+        <ins class="adsbygoogle"
+             style="display:block; margin-top:10px;"
+             data-ad-client="TU-CODIGO-CLIENTE"
+             data-ad-slot="TU-CODIGO-SLOT"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
     </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
     <script>
         var map = L.map('map').setView([19.0414, -98.2071], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        
+
         var lineas = {
             "Linea 1": {
                 "color": "blue",
-                "puntos": [
-                    {"nombre": "Emiliano Zapata", "coordenadas": [19.033505, -98.26261]},
-                    {"nombre": "Casa de Ángeles", "coordenadas": [19.03506, -98.258348]},
-                    {"nombre": "Terminal Chachapa", "coordenadas": [19.054604, -98.11243]}
-                ]
+                "puntos": [[19.033505, -98.26261], [19.03506, -98.258348], [19.054604, -98.11243]]
             },
             "Linea 2": {
                 "color": "red",
-                "puntos": [
-                    {"nombre": "Terminal Margaritas", "coordenadas": [18.96981, -98.265373]},
-                    {"nombre": "Limones", "coordenadas": [18.964806, -98.267899]},
-                    {"nombre": "Diagonal Pte.", "coordenadas": [19.062832, -98.197655]}
-                ]
+                "puntos": [[18.96981, -98.265373], [18.964806, -98.267899], [19.062832, -98.197655]]
             },
             "Linea 3": {
                 "color": "green",
-                "puntos": [
-                    {"nombre": "Terminal Valsequillo", "coordenadas": [18.973044, -98.19266]},
-                    {"nombre": "La Fragua", "coordenadas": [18.978449, -98.196221]},
-                    {"nombre": "Terminal CAPU", "coordenadas": [19.07508, -98.203699]}
-                ]
+                "puntos": [[18.973044, -98.19266], [18.978449, -98.196221], [19.07508, -98.203699]]
             }
         };
 
-        function agregarLinea(nombreLinea, datosLinea) {
-            var coordenadas = datosLinea.puntos.map(punto => [punto.coordenadas[0], punto.coordenadas[1]]);
-            L.polyline(coordenadas, {color: datosLinea.color}).addTo(map);
-            datosLinea.puntos.forEach(punto => {
-                L.marker([punto.coordenadas[0], punto.coordenadas[1]])
-                    .bindPopup(punto.nombre)
-                    .addTo(map);
-            });
+        var lineasDibujadas = {};
+
+        function agregarLinea(nombreLinea) {
+            var datosLinea = lineas[nombreLinea];
+            var coordenadas = datosLinea.puntos;
+            var polyline = L.polyline(coordenadas, { color: datosLinea.color }).addTo(map);
+            lineasDibujadas[nombreLinea] = polyline;
         }
-        
-        for (var nombreLinea in lineas) {
-            agregarLinea(nombreLinea, lineas[nombreLinea]);
+
+        function resaltarLinea(nombreLinea) {
+            Object.values(lineasDibujadas).forEach(linea => map.removeLayer(linea));
+            agregarLinea(nombreLinea);
         }
-        
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabButtons.forEach(button => {
+
+        Object.keys(lineas).forEach(agregarLinea);
+
+        // Funcionalidad de pestañas
+        document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
+                let tabId = button.dataset.tab;
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
                 button.classList.add('active');
-                document.getElementById(button.dataset.tab).classList.add('active');
+                document.getElementById(tabId).classList.add('active');
             });
         });
     </script>
