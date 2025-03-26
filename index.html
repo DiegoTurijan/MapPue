@@ -1,208 +1,250 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metro de Puebla</title>
-
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js" crossorigin="anonymous"></script>
-
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-
+    <title>Metro de Puebla - Calculador de Rutas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: sans-serif;
-            background-color: #f8f8f8;
-        }
-
-        #map {
-            height: 100vh;
-            width: 100vw;
-            position: fixed;
-            top: 0;
-            left: 0;
+        #map { 
+            height: 100vh; 
+            width: 100vw; 
             z-index: 1;
         }
-
-        .tab-buttons {
-            display: flex;
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 5px;
-            overflow: hidden;
-            z-index: 2;
-        }
-
-        .tab-button {
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-            background-color: transparent;
-            color: #333;
-        }
-
-        .tab-button.active {
-            background-color: #d0d0d0;
-        }
-
-        .tab-content {
-            display: none;
-            position: absolute;
-            top: 80px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            z-index: 2;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .linea-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .linea-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
-
-        .download-button {
-            display: block;
-            margin-top: 10px;
-            background-color: #4a90e2;
-            color: white;
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
             padding: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
         }
-
-        #lineas button {
-            background-color: #4a90e2;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            margin: 5px 0;
-            cursor: pointer;
+        .station-select {
             width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .route-info {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
-
-    <!-- Pestañas -->
-    <div class="tab-buttons">
-        <div class="tab-button active" data-tab="mapa">Mapa</div>
-        <div class="tab-button" data-tab="lineas">Líneas</div>
+    <div class="control-panel">
+        <h3 style="margin-top:0;">Calculador de Ruta</h3>
+        <select id="start-station" class="station-select">
+            <option value="">-- Selecciona origen --</option>
+        </select>
+        <select id="end-station" class="station-select">
+            <option value="">-- Selecciona destino --</option>
+        </select>
+        <button id="calculate-route">Calcular Ruta</button>
+        <div id="route-info" class="route-info"></div>
     </div>
-
-    <!-- Contenido: Mapa -->
-    <div class="tab-content active" id="mapa">
-        <h2>Metro de Puebla</h2>
-        <p>Mapa interactivo de las líneas del metro de Puebla.</p>
-
-        <!-- Google AdSense -->
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="TU-CODIGO-CLIENTE"
-             data-ad-slot="TU-CODIGO-SLOT"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-
-        <button class="download-button">Descargar Mapa</button>
-    </div>
-
-    <!-- Contenido: Líneas -->
-    <div class="tab-content" id="lineas">
-        <h2>Selecciona una línea:</h2>
-        <button onclick="resaltarLinea('Linea 1')">Línea 1</button>
-        <button onclick="resaltarLinea('Linea 2')">Línea 2</button>
-        <button onclick="resaltarLinea('Linea 3')">Línea 3</button>
-
-        <!-- Google AdSense -->
-        <ins class="adsbygoogle"
-             style="display:block; margin-top:10px;"
-             data-ad-client="TU-CODIGO-CLIENTE"
-             data-ad-slot="TU-CODIGO-SLOT"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 
     <script>
-        var map = L.map('map').setView([19.0414, -98.2071], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        var lineas = {
-            "Linea 1": {
-                "color": "blue",
-                "puntos": [[19.033505, -98.26261], [19.03506, -98.258348], [19.054604, -98.11243]]
+        // Datos del Metro de Puebla (simplificado)
+        const lineasMetro = {
+            "L1": {
+                color: "#e74c3c",
+                estaciones: [
+                    {id: "l1-1", nombre: "Chachapa", coords: [19.0600, -98.2000]},
+                    {id: "l1-2", nombre: "San Francisco", coords: [19.0500, -98.2050]},
+                    {id: "l1-3", nombre: "Centro", coords: [19.0414, -98.2063], transfer: true},
+                    {id: "l1-4", nombre: "Angelópolis", coords: [19.0350, -98.2100]},
+                    {id: "l1-5", nombre: "Valsequillo", coords: [19.0250, -98.2150]}
+                ]
             },
-            "Linea 2": {
-                "color": "red",
-                "puntos": [[18.96981, -98.265373], [18.964806, -98.267899], [19.062832, -98.197655]]
+            "L2": {
+                color: "#3498db",
+                estaciones: [
+                    {id: "l2-1", nombre: "Zavaleta", coords: [19.0450, -98.1800]},
+                    {id: "l2-2", nombre: "Universidades", coords: [19.0420, -98.1900]},
+                    {id: "l2-3", nombre: "Centro", coords: [19.0414, -98.2063], transfer: true},
+                    {id: "l2-4", nombre: "Xonaca", coords: [19.0400, -98.2200]},
+                    {id: "l2-5", nombre: "San Pedro", coords: [19.0380, -98.2300]}
+                ]
             },
-            "Linea 3": {
-                "color": "green",
-                "puntos": [[18.973044, -98.19266], [18.978449, -98.196221], [19.07508, -98.203699]]
+            "L3": {
+                color: "#2ecc71",
+                estaciones: [
+                    {id: "l3-1", nombre: "Terminal CAPU", coords: [19.0700, -98.1900]},
+                    {id: "l3-2", nombre: "San Manuel", coords: [19.0600, -98.1950]},
+                    {id: "l3-3", nombre: "Centro", coords: [19.0414, -98.2063], transfer: true},
+                    {id: "l3-4", nombre: "La Paz", coords: [19.0300, -98.2000]},
+                    {id: "l3-5", nombre: "Los Fuertes", coords: [19.0200, -98.1950]}
+                ]
             }
         };
 
-        var lineasDibujadas = {};
+        // Variables globales
+        let map;
+        let startMarker, endMarker;
+        let currentRoute = null;
 
-        function agregarLinea(nombreLinea) {
-            var datosLinea = lineas[nombreLinea];
-            var coordenadas = datosLinea.puntos;
-            var polyline = L.polyline(coordenadas, { color: datosLinea.color }).addTo(map);
-            lineasDibujadas[nombreLinea] = polyline;
+        // Inicializar mapa
+        function initMap() {
+            map = L.map('map').setView([19.0414, -98.2063], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Dibujar todas las líneas y estaciones
+            drawMetroLines();
+            
+            // Llenar selectores de estaciones
+            fillStationSelectors();
         }
 
-        function resaltarLinea(nombreLinea) {
-            Object.values(lineasDibujadas).forEach(linea => map.removeLayer(linea));
-            agregarLinea(nombreLinea);
-        }
-
-        Object.keys(lineas).forEach(agregarLinea);
-
-        // Funcionalidad de pestañas
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                let tabId = button.dataset.tab;
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                button.classList.add('active');
-                document.getElementById(tabId).classList.add('active');
+        // Dibujar líneas del metro
+        function drawMetroLines() {
+            Object.values(lineasMetro).forEach(linea => {
+                const coords = linea.estaciones.map(e => e.coords);
+                L.polyline(coords, {
+                    color: linea.color,
+                    weight: 6,
+                    opacity: 0.7
+                }).addTo(map);
+                
+                linea.estaciones.forEach(estacion => {
+                    const icon = estacion.transfer ? 
+                        L.icon({
+                            iconUrl: 'https://cdn-icons-png.flaticon.com/512/1828/1828665.png',
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        }) :
+                        L.icon({
+                            iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484167.png',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        });
+                    
+                    L.marker(estacion.coords, {icon: icon})
+                        .addTo(map)
+                        .bindPopup(`<b>${estacion.nombre}</b>`);
+                });
             });
-        });
+        }
+
+        // Llenar los dropdowns de estaciones
+        function fillStationSelectors() {
+            const startSelect = document.getElementById('start-station');
+            const endSelect = document.getElementById('end-station');
+            
+            Object.values(lineasMetro).forEach(linea => {
+                linea.estaciones.forEach(estacion => {
+                    const option = `<option value="${estacion.id}">${estacion.nombre} (${Object.keys(lineasMetro).find(key => lineasMetro[key] === linea)})</option>`;
+                    startSelect.innerHTML += option;
+                    endSelect.innerHTML += option;
+                });
+            });
+        }
+
+        // Calcular ruta entre dos estaciones
+        function calculateRoute() {
+            const startId = document.getElementById('start-station').value;
+            const endId = document.getElementById('end-station').value;
+            
+            if (!startId || !endId) {
+                alert("Por favor selecciona estación de origen y destino");
+                return;
+            }
+            
+            // Limpiar ruta anterior
+            if (currentRoute) {
+                map.removeLayer(currentRoute);
+            }
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+            
+            // Obtener coordenadas de las estaciones
+            const startStation = findStationById(startId);
+            const endStation = findStationById(endId);
+            
+            // Marcar estaciones en el mapa
+            startMarker = L.marker(startStation.coords, {
+                icon: L.icon({
+                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/727/727606.png',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32]
+                })
+            }).addTo(map).bindPopup(`<b>Origen:</b> ${startStation.nombre}`).openPopup();
+            
+            endMarker = L.marker(endStation.coords, {
+                icon: L.icon({
+                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/727/727613.png',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32]
+                })
+            }).addTo(map).bindPopup(`<b>Destino:</b> ${endStation.nombre}`).openPopup();
+            
+            // Calcular y dibujar ruta (simplificado)
+            currentRoute = L.polyline([startStation.coords, endStation.coords], {
+                color: '#f39c12',
+                weight: 8,
+                dashArray: '10, 10'
+            }).addTo(map);
+            
+            // Mostrar información de la ruta
+            document.getElementById('route-info').style.display = 'block';
+            document.getElementById('route-info').innerHTML = `
+                <p><strong>Ruta calculada:</strong></p>
+                <p>${startStation.nombre} → ${endStation.nombre}</p>
+                <p>Distancia aproximada: ${calculateDistance(startStation.coords, endStation.coords).toFixed(2)} km</p>
+            `;
+            
+            // Ajustar vista del mapa
+            map.fitBounds([startStation.coords, endStation.coords]);
+        }
+
+        // Función auxiliar para encontrar estación por ID
+        function findStationById(id) {
+            for (const linea of Object.values(lineasMetro)) {
+                for (const estacion of linea.estaciones) {
+                    if (estacion.id === id) return estacion;
+                }
+            }
+            return null;
+        }
+
+        // Calcular distancia aproximada entre dos puntos (fórmula haversine)
+        function calculateDistance(coord1, coord2) {
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
+            const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', initMap);
+        document.getElementById('calculate-route').addEventListener('click', calculateRoute);
     </script>
 </body>
 </html>
