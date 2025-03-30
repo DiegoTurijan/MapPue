@@ -1,74 +1,240 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Metro de Puebla - Calculador de Rutas</title>
+    <title>Metro Puebla - Apple Style</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        :root {
+            --apple-bg: #f2f2f7;
+            --apple-card: #ffffff;
+            --apple-blue: #007aff;
+            --apple-gray: #8e8e93;
+            --apple-text: #1c1c1e;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--apple-text);
+            background: var(--apple-bg);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         #map { 
             height: 100vh; 
-            width: 100vw; 
-            z-index: 1;
-        }
-        .control-panel {
+            width: 100vw;
             position: fixed;
-            bottom: 20px;
-            left: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            width: 90%;
-            max-width: 400px;
+            top: 0;
+            z-index: 0;
         }
-        .station-select {
+        
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
             width: 100%;
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            height: 80px;
+            background: var(--apple-card);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.05);
+            z-index: 1000;
         }
-        button {
-            background: #3498db;
+        
+        .tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--apple-gray);
+            font-size: 12px;
+            padding: 8px;
+        }
+        
+        .tab.active {
+            color: var(--apple-blue);
+        }
+        
+        .tab-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .route-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--apple-card);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transform: translateY(calc(-100% - 20px));
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .route-panel.visible {
+            transform: translateY(0);
+        }
+        
+        .route-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .route-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--apple-blue);
+            font-size: 16px;
+        }
+        
+        .route-info {
+            margin-top: 8px;
+        }
+        
+        .info-item {
+            display: flex;
+            margin: 12px 0;
+        }
+        
+        .info-icon {
+            margin-right: 12px;
+            color: var(--apple-blue);
+        }
+        
+        .info-text {
+            flex: 1;
+        }
+        
+        .info-label {
+            font-size: 14px;
+            color: var(--apple-gray);
+        }
+        
+        .info-value {
+            font-size: 16px;
+            margin-top: 2px;
+        }
+        
+        .station-selector {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            right: 20px;
+            background: var(--apple-card);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #e5e5ea;
+            border-radius: 10px;
+            background-color: var(--apple-card);
+            font-size: 16px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .calculate-btn {
+            width: 100%;
+            background: var(--apple-blue);
             color: white;
             border: none;
-            padding: 10px;
-            width: 100%;
-            border-radius: 4px;
-            margin-top: 5px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .route-info {
-            margin-top: 10px;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            display: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 8px;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <div class="control-panel">
-        <h3 style="margin-top:0;">Calculador de Ruta</h3>
-        <select id="start-station" class="station-select">
-            <option value="">-- Selecciona origen --</option>
+    
+    <div class="station-selector">
+        <select id="start-station">
+            <option value="">Seleccionar origen</option>
         </select>
-        <select id="end-station" class="station-select">
-            <option value="">-- Selecciona destino --</option>
+        <select id="end-station">
+            <option value="">Seleccionar destino</option>
         </select>
-        <button id="calculate-route">Calcular Ruta</button>
-        <div id="route-info" class="route-info"></div>
+        <button id="calculate-route" class="calculate-btn">Calcular Ruta</button>
+    </div>
+    
+    <div id="route-panel" class="route-panel">
+        <div class="route-header">
+            <div class="route-title">Tu Ruta</div>
+            <button class="close-btn">Listo</button>
+        </div>
+        <div class="route-info">
+            <div class="info-item">
+                <div class="info-icon">🚇</div>
+                <div class="info-text">
+                    <div class="info-label">Origen</div>
+                    <div id="route-start" class="info-value">-</div>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-icon">🏁</div>
+                <div class="info-text">
+                    <div class="info-label">Destino</div>
+                    <div id="route-end" class="info-value">-</div>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-icon">📏</div>
+                <div class="info-text">
+                    <div class="info-label">Distancia</div>
+                    <div id="route-distance" class="info-value">-</div>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-icon">⏱️</div>
+                <div class="info-text">
+                    <div class="info-label">Tiempo estimado</div>
+                    <div id="route-time" class="info-value">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tab-bar">
+        <div class="tab active">
+            <div class="tab-icon">🗺️</div>
+            <div>Mapa</div>
+        </div>
+        <div id="routes-tab" class="tab">
+            <div class="tab-icon">📝</div>
+            <div>Rutas</div>
+        </div>
+        <div class="tab">
+            <div class="tab-icon">⭐</div>
+            <div>Favoritos</div>
+        </div>
     </div>
 
     <script>
-        // Datos del Metro de Puebla (simplificado)
+        // Datos del Metro de Puebla
         const lineasMetro = {
             "L1": {
-                color: "#e74c3c",
+                color: "#FF3B30",
                 estaciones: [
                     {id: "l1-1", nombre: "Chachapa", coords: [19.0600, -98.2000]},
                     {id: "l1-2", nombre: "San Francisco", coords: [19.0500, -98.2050]},
@@ -78,7 +244,7 @@
                 ]
             },
             "L2": {
-                color: "#3498db",
+                color: "#007AFF",
                 estaciones: [
                     {id: "l2-1", nombre: "Zavaleta", coords: [19.0450, -98.1800]},
                     {id: "l2-2", nombre: "Universidades", coords: [19.0420, -98.1900]},
@@ -88,7 +254,7 @@
                 ]
             },
             "L3": {
-                color: "#2ecc71",
+                color: "#34C759",
                 estaciones: [
                     {id: "l3-1", nombre: "Terminal CAPU", coords: [19.0700, -98.1900]},
                     {id: "l3-2", nombre: "San Manuel", coords: [19.0600, -98.1950]},
@@ -111,115 +277,140 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // Dibujar todas las líneas y estaciones
-            drawMetroLines();
+            // Estilo minimalista para el mapa
+            document.querySelector('.leaflet-control-attribution').style.display = 'none';
+            document.querySelector('.leaflet-control-zoom').style.margin = '20px';
             
-            // Llenar selectores de estaciones
+            drawMetroLines();
             fillStationSelectors();
+            setupEventListeners();
         }
 
         // Dibujar líneas del metro
         function drawMetroLines() {
-            Object.values(lineasMetro).forEach(linea => {
+            Object.entries(lineasMetro).forEach(([lineaId, linea]) => {
                 const coords = linea.estaciones.map(e => e.coords);
                 L.polyline(coords, {
                     color: linea.color,
                     weight: 6,
-                    opacity: 0.7
-                }).addTo(map);
+                    opacity: 0.8,
+                    smoothFactor: 1
+                }).addTo(map).bindPopup(`Línea ${lineaId}`);
                 
                 linea.estaciones.forEach(estacion => {
-                    const icon = estacion.transfer ? 
-                        L.icon({
-                            iconUrl: 'https://cdn-icons-png.flaticon.com/512/1828/1828665.png',
-                            iconSize: [28, 28],
-                            iconAnchor: [14, 14]
-                        }) :
-                        L.icon({
-                            iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484167.png',
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12]
-                        });
+                    const icon = L.divIcon({
+                        className: `station-icon ${estacion.transfer ? 'transfer' : ''}`,
+                        html: `
+                            <div class="station-marker" style="background:${linea.color}">
+                                ${estacion.transfer ? '🔄' : '⏺️'}
+                            </div>
+                        `,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    });
                     
                     L.marker(estacion.coords, {icon: icon})
                         .addTo(map)
-                        .bindPopup(`<b>${estacion.nombre}</b>`);
+                        .bindPopup(`
+                            <div style="font-weight:600">${estacion.nombre}</div>
+                            <div style="color:${linea.color}">Línea ${lineaId}</div>
+                        `);
                 });
             });
         }
 
-        // Llenar los dropdowns de estaciones
+        // Llenar selectores de estaciones
         function fillStationSelectors() {
             const startSelect = document.getElementById('start-station');
             const endSelect = document.getElementById('end-station');
             
-            Object.values(lineasMetro).forEach(linea => {
+            Object.entries(lineasMetro).forEach(([lineaId, linea]) => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = `Línea ${lineaId}`;
+                
                 linea.estaciones.forEach(estacion => {
-                    const option = `<option value="${estacion.id}">${estacion.nombre} (${Object.keys(lineasMetro).find(key => lineasMetro[key] === linea)})</option>`;
-                    startSelect.innerHTML += option;
-                    endSelect.innerHTML += option;
+                    const option = document.createElement('option');
+                    option.value = estacion.id;
+                    option.textContent = estacion.nombre;
+                    optgroup.appendChild(option);
                 });
+                
+                startSelect.appendChild(optgroup.cloneNode(true));
+                endSelect.appendChild(optgroup);
             });
         }
 
-        // Calcular ruta entre dos estaciones
+        // Calcular ruta
         function calculateRoute() {
             const startId = document.getElementById('start-station').value;
             const endId = document.getElementById('end-station').value;
             
             if (!startId || !endId) {
-                alert("Por favor selecciona estación de origen y destino");
+                alert("Selecciona estación de origen y destino");
                 return;
             }
             
             // Limpiar ruta anterior
-            if (currentRoute) {
-                map.removeLayer(currentRoute);
-            }
+            if (currentRoute) map.removeLayer(currentRoute);
             if (startMarker) map.removeLayer(startMarker);
             if (endMarker) map.removeLayer(endMarker);
             
-            // Obtener coordenadas de las estaciones
+            // Obtener estaciones
             const startStation = findStationById(startId);
             const endStation = findStationById(endId);
             
-            // Marcar estaciones en el mapa
+            // Crear marcadores
             startMarker = L.marker(startStation.coords, {
-                icon: L.icon({
-                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/727/727606.png',
+                icon: L.divIcon({
+                    className: 'start-marker',
+                    html: '<div class="start-icon">🟢</div>',
                     iconSize: [32, 32],
                     iconAnchor: [16, 32]
                 })
-            }).addTo(map).bindPopup(`<b>Origen:</b> ${startStation.nombre}`).openPopup();
+            }).addTo(map).bindPopup(`Origen: ${startStation.nombre}`).openPopup();
             
             endMarker = L.marker(endStation.coords, {
-                icon: L.icon({
-                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/727/727613.png',
+                icon: L.divIcon({
+                    className: 'end-marker',
+                    html: '<div class="end-icon">🔴</div>',
                     iconSize: [32, 32],
                     iconAnchor: [16, 32]
                 })
-            }).addTo(map).bindPopup(`<b>Destino:</b> ${endStation.nombre}`).openPopup();
+            }).addTo(map).bindPopup(`Destino: ${endStation.nombre}`).openPopup();
             
-            // Calcular y dibujar ruta (simplificado)
+            // Dibujar ruta (simplificado)
             currentRoute = L.polyline([startStation.coords, endStation.coords], {
-                color: '#f39c12',
-                weight: 8,
-                dashArray: '10, 10'
+                color: '#5856D6',
+                weight: 6,
+                dashArray: '8, 8',
+                opacity: 0.9
             }).addTo(map);
             
-            // Mostrar información de la ruta
-            document.getElementById('route-info').style.display = 'block';
-            document.getElementById('route-info').innerHTML = `
-                <p><strong>Ruta calculada:</strong></p>
-                <p>${startStation.nombre} → ${endStation.nombre}</p>
-                <p>Distancia aproximada: ${calculateDistance(startStation.coords, endStation.coords).toFixed(2)} km</p>
-            `;
+            // Actualizar panel de información
+            updateRouteInfo(startStation, endStation);
             
-            // Ajustar vista del mapa
+            // Ajustar vista
             map.fitBounds([startStation.coords, endStation.coords]);
         }
 
-        // Función auxiliar para encontrar estación por ID
+        // Actualizar panel de información
+        function updateRouteInfo(start, end) {
+            document.getElementById('route-start').textContent = start.nombre;
+            document.getElementById('route-end').textContent = end.nombre;
+            
+            const distance = calculateDistance(start.coords, end.coords);
+            document.getElementById('route-distance').textContent = `${distance.toFixed(1)} km`;
+            
+            // Estimación: 2 min por km + 3 min por transferencia
+            const transferTime = (start.transfer || end.transfer) ? 3 : 0;
+            const totalTime = Math.round(distance * 2 + transferTime);
+            document.getElementById('route-time').textContent = `${totalTime} min aprox.`;
+            
+            // Mostrar panel
+            document.getElementById('route-panel').classList.add('visible');
+        }
+
+        // Función auxiliar para encontrar estación
         function findStationById(id) {
             for (const linea of Object.values(lineasMetro)) {
                 for (const estacion of linea.estaciones) {
@@ -229,9 +420,9 @@
             return null;
         }
 
-        // Calcular distancia aproximada entre dos puntos (fórmula haversine)
+        // Calcular distancia (fórmula haversine)
         function calculateDistance(coord1, coord2) {
-            const R = 6371; // Radio de la Tierra en km
+            const R = 6371;
             const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
             const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
             const a = 
@@ -242,9 +433,48 @@
             return R * c;
         }
 
-        // Event listeners
+        // Configurar event listeners
+        function setupEventListeners() {
+            document.getElementById('calculate-route').addEventListener('click', calculateRoute);
+            
+            document.querySelector('.close-btn').addEventListener('click', () => {
+                document.getElementById('route-panel').classList.remove('visible');
+            });
+            
+            document.getElementById('routes-tab').addEventListener('click', () => {
+                document.getElementById('route-panel').classList.add('visible');
+            });
+        }
+
+        // Inicializar
         document.addEventListener('DOMContentLoaded', initMap);
-        document.getElementById('calculate-route').addEventListener('click', calculateRoute);
     </script>
+    
+    <style>
+        /* Estilos adicionales para marcadores */
+        .station-marker {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .station-icon.transfer .station-marker {
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+        }
+        
+        .start-icon, .end-icon {
+            font-size: 24px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+    </style>
 </body>
 </html>
