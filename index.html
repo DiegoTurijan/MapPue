@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Metro Puebla - Ruta Inteligente</title>
+    <title>Metro Puebla - Selección Libre</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -43,6 +43,33 @@
             z-index: 1000;
         }
         
+        .mode-selector {
+            display: flex;
+            margin-bottom: 12px;
+            background: #e5e5ea;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .mode-btn.active {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .station-selector {
+            margin-top: 12px;
+        }
+        
         select {
             width: 100%;
             padding: 12px;
@@ -78,6 +105,7 @@
             z-index: 1000;
             max-height: 60vh;
             overflow-y: auto;
+            display: none;
         }
         
         .route-step {
@@ -142,22 +170,53 @@
             font-size: 24px;
             margin-bottom: 4px;
         }
+        
+        .custom-point-popup {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .hide-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 1001; /* Asegura que el botón esté por encima de otros elementos */
+            font-size: 0.8em;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        
     </style>
 </head>
 <body>
     <div id="map"></div>
     
-    <div class="control-panel">
-        <select id="start-station">
-            <option value="">Seleccionar origen</option>
-        </select>
-        <select id="end-station">
-            <option value="">Seleccionar destino</option>
-        </select>
+    <div id="control-panel" class="control-panel">
+        <button id="hide-control-panel-btn" class="hide-button">Ocultar</button>
+        <div class="mode-selector">
+            <button id="mode-origin" class="mode-btn active">Origen</button>
+            <button id="mode-destination" class="mode-btn">Destino</button>
+        </div>
+        
+        <div class="station-selector">
+            <select id="metro-station">
+                <option value="">Seleccionar estación de metro</option>
+            </select>
+            <div style="text-align: center; margin: 10px 0; color: var(--apple-gray)">o</div>
+            <button id="select-on-map" class="calculate-btn" style="background: #34C759;">Seleccionar en el mapa</button>
+        </div>
+        
         <button id="calculate-route" class="calculate-btn">Calcular Ruta</button>
     </div>
     
-    <div id="route-panel" class="route-panel" style="display:none;">
+    <div id="route-panel" class="route-panel">
+        <button id="hide-route-panel-btn" class="hide-button">Ocultar</button>
         <h3 style="margin-top:0;">Instrucciones de Ruta</h3>
         <div id="route-steps"></div>
     </div>
@@ -174,237 +233,59 @@
     </div>
 
     <script>
-        // Datos completos del Metro de Puebla (con conexiones)
+        // Datos del Metro de Puebla
         const metroData = {
             lineas: {
                 "L1": {
                     color: "#FF3B30",
                     estaciones: [
-    {id: "l1-1", nombre: "01 Emiliano Zapata", coords: [19.033505, -98.26261]},
-    {id: "l1-2", nombre: "02 Casa de Ángeles", coords: [19.03506, -98.258348]},
-    {id: "l1-3", nombre: "03 Carmen Serdán", coords: [19.036337, -98.251393]},
-    {id: "l1-4", nombre: "04 Niño Poblano", coords: [19.037256, -98.247623]},
-    {id: "l1-5", nombre: "05 Estrellas del Sur", coords: [19.039306, -98.241692]},
-    {id: "l1-6", nombre: "06 Las Ánimas", coords: [19.045602, -98.234942]},
-    {id: "l1-7", nombre: "07 25 Poniente", coords: [19.048903, -98.232213]},
-    {id: "l1-8", nombre: "08 Matamoros", coords: [19.051029, -98.227509]},
-    {id: "l1-9", nombre: "09 Juárez-Serdán", coords: [19.056092, -98.221059]},
-    {id: "l1-10", nombre: "10 Hermanos Serdán", coords: [19.059436, -98.218207]},
-    {id: "l1-11", nombre: "11 San Alejandro", coords: [19.058276, -98.215912]},
-    {id: "l1-12", nombre: "12 Defensores de la República", coords: [19.057396, -98.211744]},
-    {id: "l1-13", nombre: "13 18 Poniente", coords: [19.058516, -98.209708]},
-    {id: "l1-14", nombre: "14 Pestalozzi", coords: [19.060767, -98.205472]},
-    {id: "l1-15", nombre: "15 Santa Anita", coords: [19.062354, -98.201728]},
-    {id: "l1-16", nombre: "16 Constitución", coords: [19.063414, -98.197669]},
-    {id: "l1-17", nombre: "17 El Rayito", coords: [19.064257, -98.194665]},
-    {id: "l1-18", nombre: "18 China Poblana", coords: [19.064802, -98.19231]},
-    {id: "l1-19", nombre: "19 Los Lavaderos", coords: [19.065086, -98.188159]},
-    {id: "l1-20", nombre: "20 Puente Zaragoza", coords: [19.064823, -98.183021]},
-    {id: "l1-21", nombre: "21 Ignacio Zaragoza", coords: [19.064405, -98.179088]},
-    {id: "l1-22", nombre: "22 Los Fuertes", coords: [19.064014, -98.175664]},
-    {id: "l1-23", nombre: "23 Tecnológico", coords: [19.06353, -98.171921]},
-    {id: "l1-24", nombre: "24 La Ciénega", coords: [19.062885, -98.168307]},
-    {id: "l1-25", nombre: "25 La Rosa", coords: [19.062441, -98.163842]},
-    {id: "l1-26", nombre: "26 18 de Noviembre", coords: [19.06186, -98.159439]},
-    {id: "l1-27", nombre: "27 La Resurrección", coords: [19.061196, -98.155177]},
-    {id: "l1-28", nombre: "28 Universidad Tecnológica", coords: [19.060129, -98.149167]},
-    {id: "l1-29", nombre: "29 Rivera Anaya", coords: [19.058609, -98.144746]},
-    {id: "l1-30", nombre: "30 Amalucan", coords: [19.056677, -98.139284]},
-    {id: "l1-31", nombre: "31 Bosques", coords: [19.056151, -98.13633]},
-    {id: "l1-32", nombre: "32 Galaxia", coords: [19.055269, -98.132237]},
-    {id: "l1-33", nombre: "33 El Pilar", coords: [19.054752, -98.127842]},
-    {id: "l1-34", nombre: "34 Mixatlac", coords: [19.054284, -98.123817]},
-    {id: "l1-35", nombre: "35 Santa Mago", coords: [19.053955, -98.119824]},
-    {id: "l1-36", nombre: "36 Chachapa", coords: [19.054104, -98.114623]},
-    {id: "l1-37", nombre: "Terminal Chachapa", coords: [19.054604, -98.11243]}
-]
+                        {id: "l1-1", nombre: "Chachapa", coords: [19.0600, -98.2000]},
+                        {id: "l1-2", nombre: "San Francisco", coords: [19.0500, -98.2050]},
+                        {id: "l1-3", nombre: "Centro", coords: [19.0414, -98.2063], transfer: ["L2", "L3"]},
+                        {id: "l1-4", nombre: "Angelópolis", coords: [19.0350, -98.2100]},
+                        {id: "l1-5", nombre: "Valsequillo", coords: [19.0250, -98.2150]}
+                    ]
                 },
                 "L2": {
                     color: "#007AFF",
                     estaciones: [
-    {id: "l2-1", nombre: "Terminal Margaritas", coords: [18.96981, -98.265373]},
-    {id: "l2-2", nombre: "Limones", coords: [18.964806, -98.267899]},
-    {id: "l2-3", nombre: "Tabachines", coords: [18.972988, -98.261345]},
-    {id: "l2-4", nombre: "Azaleas", coords: [18.975225, -98.25853]},
-    {id: "l2-5", nombre: "Pino Suárez", coords: [18.977932, -98.255768]},
-    {id: "l2-6", nombre: "Independencia", coords: [18.980764, -98.253571]},
-    {id: "l2-7", nombre: "Olivos", coords: [18.984348, -98.250908]},
-    {id: "l2-8", nombre: "C. C. Centro Sur", coords: [18.98851, -98.247749]},
-    {id: "l2-9", nombre: "Periférico", coords: [18.990587, -98.24614]},
-    {id: "l2-10", nombre: "San Bartolo", coords: [18.994415, -98.243233]},
-    {id: "l2-11", nombre: "Yucatán", coords: [18.997578, -98.240814]},
-    {id: "l2-12", nombre: "Tarascos", coords: [19.003727, -98.238724]},
-    {id: "l2-13", nombre: "Torrecillas", coords: [19.005829, -98.237831]},
-    {id: "l2-14", nombre: "Tecamachalco", coords: [19.010363, -98.23513]},
-    {id: "l2-15", nombre: "Club de Golf", coords: [19.013206, -98.233284]},
-    {id: "l2-16", nombre: "Cúmulo de Virgo", coords: [19.015606, -98.231735]},
-    {id: "l2-17", nombre: "IMSS", coords: [19.018902, -98.228844]},
-    {id: "l2-18", nombre: "Zaragoza", coords: [19.020306, -98.227951]},
-    {id: "l2-19", nombre: "Río Atoyac", coords: [19.022203, -98.225586]},
-    {id: "l2-20", nombre: "Niño Poblano", coords: [19.02536, -98.22242]},
-    {id: "l2-21", nombre: "Juan Pablo II", coords: [19.028063, -98.219833]},
-    {id: "l2-22", nombre: "Alpha", coords: [19.030396, -98.217545]},
-    {id: "l2-23", nombre: "Panteones", coords: [19.03434, -98.214767]},
-    {id: "l2-24", nombre: "Espinosa Yglesias", coords: [19.036167, -98.213394]},
-    {id: "l2-25", nombre: "Revolución", coords: [19.038601, -98.211784]},
-    {id: "l2-26", nombre: "Santiago", coords: [19.041145, -98.210403]},
-    {id: "l2-27", nombre: "Héroes de la Reforma", coords: [19.044199, -98.208717]},
-    {id: "l2-28", nombre: "Paseo Bravo", coords: [19.046801, -98.207222]},
-    {id: "l2-29", nombre: "Mercado de Sabores", coords: [19.050379, -98.205093]},
-    {id: "l2-30", nombre: "Museo del Ferrocarril", coords: [19.054834, -98.202507]},
-    {id: "l2-31", nombre: "Nacozari", coords: [19.057179, -98.198789]},
-    {id: "l2-32", nombre: "Esperanza", coords: [19.059357, -98.199654]},
-    {id: "l2-33", nombre: "Diagonal Ote.", coords: [19.063871, -98.19516]},
-    {id: "l2-34", nombre: "Diagonal Pte.", coords: [19.062832, -98.197655]}
-]
+                        {id: "l2-1", nombre: "Zavaleta", coords: [19.0450, -98.1800]},
+                        {id: "l2-2", nombre: "Universidades", coords: [19.0420, -98.1900]},
+                        {id: "l2-3", nombre: "Centro", coords: [19.0414, -98.2063], transfer: ["L1", "L3"]},
+                        {id: "l2-4", nombre: "Xonaca", coords: [19.0400, -98.2200]},
+                        {id: "l2-5", nombre: "San Pedro", coords: [19.0380, -98.2300]}
+                    ]
                 },
                 "L3": {
                     color: "#34C759",
                     estaciones: [
-    {id: "l3-1", nombre: "Terminal Valsequillo", coords: [18.973044, -98.19266]},
-    {id: "l3-2", nombre: "01 La Fragua", coords: [18.978449, -98.196221]},
-    {id: "l3-3", nombre: "02 Arboledas", coords: [18.983595, -98.198652]},
-    {id: "l3-4", nombre: "03 Xilotzingo", coords: [18.98892, -98.200526]},
-    {id: "l3-5", nombre: "04 Las Torres", coords: [18.993327, -98.20211]},
-    {id: "l3-6", nombre: "05 Biblioteca Central", coords: [18.995927, -98.203044]},
-    {id: "l3-7", nombre: "06 C.U. BUAP", coords: [19.000307, -98.204612]},
-    {id: "l3-8", nombre: "07 Margaritas", coords: [19.009543, -98.207841]},
-    {id: "l3-9", nombre: "08 San Baltazar", coords: [19.01214, -98.208749]},
-    {id: "l3-10", nombre: "09 Bomberos", coords: [19.016582, -98.210344]},
-    {id: "l3-11", nombre: "10 Cristal", coords: [19.022133, -98.212285]},
-    {id: "l3-12a", nombre: "12a C.C. Camacho Espíritu", coords: [19.025845, -98.213079]},
-    {id: "l3-12b", nombre: "12b C.C. Camacho Espíritu", coords: [19.025337, -98.213424]},
-    {id: "l3-13", nombre: "13 16 de Septiembre", coords: [19.02619, -98.209854]},
-    {id: "l3-14", nombre: "14 Parque Juárez", coords: [19.027366, -98.204792]},
-    {id: "l3-15a", nombre: "15a Fiscalía", coords: [19.031477, -98.200763]},
-    {id: "l3-15b", nombre: "15b Fiscalía", coords: [19.031321, -98.200999]},
-    {id: "l3-16a", nombre: "16a Niños Héroes", coords: [19.033155, -98.199169]},
-    {id: "l3-16b", nombre: "16b Niños Héroes", coords: [19.034255, -98.198949]},
-    {id: "l3-17", nombre: "17 Clínica 2", coords: [19.038693, -98.196118]},
-    {id: "l3-18a", nombre: "18a Analco", coords: [19.040273, -98.194268]},
-    {id: "l3-18b", nombre: "18b Analco", coords: [19.040966, -98.193507]},
-    {id: "l3-19", nombre: "19 San Francisco", coords: [19.045195, -98.191166]},
-    {id: "l3-20", nombre: "20 Tunel 5 de mayo", coords: [19.049949, -98.189473]},
-    {id: "l3-21", nombre: "21 San Antonio", coords: [19.056176, -98.192959]},
-    {id: "l3-22", nombre: "22 Santa María", coords: [19.06043, -98.192304]},
-    {id: "l3-23", nombre: "23 China Poblana", coords: [19.063939, -98.191502]},
-    {id: "l3-24", nombre: "24 Guadalupe Victoria", coords: [19.068157, -98.191956]},
-    {id: "l3-25", nombre: "25 Unión", coords: [19.071462, -98.192877]},
-    {id: "l3-26", nombre: "26 Hidalgo", coords: [19.073178, -98.196303]},
-    {id: "l3-27", nombre: "27 Boulevard Norte", coords: [19.073859, -98.198964]},
-    {id: "l3-28", nombre: "Terminal CAPU", coords: [19.07508, -98.203699]}
-]
+                        {id: "l3-1", nombre: "Terminal CAPU", coords: [19.0700, -98.1900]},
+                        {id: "l3-2", nombre: "San Manuel", coords: [19.0600, -98.1950]},
+                        {id: "l3-3", nombre: "Centro", coords: [19.0414, -98.2063], transfer: ["L1", "L2"]},
+                        {id: "l3-4", nombre: "La Paz", coords: [19.0300, -98.2000]},
+                        {id: "l3-5", nombre: "Los Fuertes", coords: [19.0200, -98.1950]}
+                    ]
                 }
             },
-            // Grafo de conexiones (para el algoritmo de ruta)
-            // Grafo de conexiones (para el algoritmo de ruta)
-grafo: {
-    "l1-1": ["l1-2"],
-    "l1-2": ["l1-1", "l1-3"],
-    "l1-3": ["l1-2", "l1-4", "l2-20", "l3-15a", "l3-15b"],
-    "l1-4": ["l1-3", "l1-5"],
-    "l1-5": ["l1-4", "l1-6"],
-    "l1-6": ["l1-5", "l1-7"],
-    "l1-7": ["l1-6", "l1-8"],
-    "l1-8": ["l1-7", "l1-9"],
-    "l1-9": ["l1-8", "l1-10", "l2-28", "l2-29", "l2-30", "l2-31"],
-    "l1-10": ["l1-9", "l1-11"],
-    "l1-11": ["l1-10", "l1-12"],
-    "l1-12": ["l1-11", "l1-13"],
-    "l1-13": ["l1-12", "l1-14"],
-    "l1-14": ["l1-13", "l1-15"],
-    "l1-15": ["l1-14", "l1-16"],
-    "l1-16": ["l1-15", "l1-17"],
-    "l1-17": ["l1-16", "l1-18", "l2-33", "l2-34", "l3-23"],
-    "l1-18": ["l1-17", "l1-19", "l3-23"],
-    "l1-19": ["l1-18", "l1-20"],
-    "l1-20": ["l1-19", "l1-21"],
-    "l1-21": ["l1-20", "l1-22"],
-    "l1-22": ["l1-21", "l1-23"],
-    "l1-23": ["l1-22", "l1-24"],
-    "l1-24": ["l1-23", "l1-25"],
-    "l1-25": ["l1-24", "l1-26"],
-    "l1-26": ["l1-25", "l1-27"],
-    "l1-27": ["l1-26", "l1-28"],
-    "l1-28": ["l1-27", "l1-29"],
-    "l1-29": ["l1-28", "l1-30"],
-    "l1-30": ["l1-29", "l1-31", "l3-21"],
-    "l1-31": ["l1-30", "l1-32"],
-    "l1-32": ["l1-31", "l1-33"],
-    "l1-33": ["l1-32", "l1-34"],
-    "l1-34": ["l1-33", "l1-35"],
-    "l1-35": ["l1-34", "l1-36"],
-    "l1-36": ["l1-35", "l1-37"],
-    "l1-37": ["l1-36"],
-
-    "l2-1": ["l2-2"],
-    "l2-2": ["l2-1", "l2-3"],
-    "l2-3": ["l2-2", "l2-4"],
-    "l2-4": ["l2-3", "l2-5"],
-    "l2-5": ["l2-4", "l2-6"],
-    "l2-6": ["l2-5", "l2-7"],
-    "l2-7": ["l2-6", "l2-8"],
-    "l2-8": ["l2-7", "l2-9"],
-    "l2-9": ["l2-8", "l2-10"],
-    "l2-10": ["l2-9", "l2-11"],
-    "l2-11": ["l2-10", "l2-12"],
-    "l2-12": ["l2-11", "l2-13"],
-    "l2-13": ["l2-12", "l2-14"],
-    "l2-14": ["l2-13", "l2-15"],
-    "l2-15": ["l2-14", "l2-16"],
-    "l2-16": ["l2-15", "l2-17"],
-    "l2-17": ["l2-16", "l2-18"],
-    "l2-18": ["l2-17", "l2-19"],
-    "l2-19": ["l2-18", "l2-20"],
-    "l2-20": ["l2-19", "l2-21", "l1-3", "l3-15a", "l3-15b"],
-    "l2-21": ["l2-20", "l2-22"],
-    "l2-22": ["l2-21", "l2-23"],
-    "l2-23": ["l2-22", "l2-24"],
-    "l2-24": ["l2-23", "l2-25"],
-    "l2-25": ["l2-24", "l2-26"],
-    "l2-26": ["l2-25", "l2-27"],
-    "l2-27": ["l2-26", "l2-28"],
-    "l2-28": ["l2-27", "l2-29", "l1-9", "l3-20"],
-    "l2-29": ["l2-28", "l2-30", "l1-9", "l3-20"],
-    "l2-30": ["l2-29", "l2-31", "l1-9", "l3-20"],
-    "l2-31": ["l2-30", "l2-32", "l1-9"],
-    "l2-32": ["l2-31", "l2-33"],
-    "l2-33": ["l2-32", "l2-34", "l1-17", "l3-23"],
-    "l2-34": ["l2-33", "l1-17", "l3-23"],
-
-    "l3-1": ["l3-2"],
-    "l3-2": ["l3-1", "l3-3"],
-    "l3-3": ["l3-2", "l3-4", "l1-3", "l2-3"],
-    "l3-4": ["l3-3", "l3-5"],
-    "l3-5": ["l3-4", "l3-6"],
-    "l3-6": ["l3-5", "l3-7"],
-    "l3-7": ["l3-6", "l3-8"],
-    "l3-8": ["l3-7", "l3-9"],
-    "l3-9": ["l3-8", "l3-10"],
-    "l3-10": ["l3-9", "l3-11"],
-    "l3-11": ["l3-10", "l3-12a", "l3-12b"],
-    "l3-12a": ["l3-11"],
-    "l3-12b": ["l3-11"],
-    "l3-13": ["l3-14"],
-    "l3-14": ["l3-13", "l3-15a", "l3-15b"],
-    "l3-15a": ["l3-14", "l3-16a", "l2-20", "l1-3"],
-    "l3-15b": ["l3-14", "l3-16b", "l2-20", "l1-3"],
-    "l3-16a": ["l3-15a", "l3-17"],
-    "l3-16b": ["l3-15b", "l3-17"],
-    "l3-17": ["l3-16a", "l3-16b", "l3-18a", "l3-18b"],
-    "l3-18a": ["l3-17", "l3-19"],
-    "l3-18b": ["l3-17", "l3-19"],
-    "l3-19": ["l3-18a", "l3-18b", "l3-20"],
-    "l3-20": ["l3-19", "l3-21", "l2-28", "l2-29", "l2-30"],
-    "l3-21": ["l3-20", "l3-22", "l1-30"],
-    "l3-22": ["l3-21", "l3-23"],
-    "l3-23": ["l3-22", "l3-24", "l1-17", "l1-18", "l2-33", "l2-34"],
-    "l3-24": ["l3-23", "l3-25"],
-    "l3-25": ["l3-24", "l3-26"],
-    "l3-26": ["l3-25", "l3-27"],
-    "l3-27": ["l3-26", "l3-28"],
-    "l3-28": ["l3-27"]
-}
+            grafo: {
+                "l1-1": ["l1-2"],
+                "l1-2": ["l1-1", "l1-3"],
+                "l1-3": ["l1-2", "l1-4", "l2-3", "l3-3"],
+                "l1-4": ["l1-3", "l1-5"],
+                "l1-5": ["l1-4"],
+                
+                "l2-1": ["l2-2"],
+                "l2-2": ["l2-1", "l2-3"],
+                "l2-3": ["l2-2", "l2-4", "l1-3", "l3-3"],
+                "l2-4": ["l2-3", "l2-5"],
+                "l2-5": ["l2-4"],
+                
+                "l3-1": ["l3-2"],
+                "l3-2": ["l3-1", "l3-3"],
+                "l3-3": ["l3-2", "l3-4", "l1-3", "l2-3"],
+                "l3-4": ["l3-3", "l3-5"],
+                "l3-5": ["l3-4"]
+            }
         };
 
         // Variables globales
@@ -412,6 +293,10 @@ grafo: {
         let startMarker, endMarker;
         let currentRoute = null;
         let stationMarkers = [];
+        let customOrigin = null;
+        let customDestination = null;
+        let currentMode = 'origin'; // 'origin' or 'destination'
+        let selectionMode = false;
 
         // Inicializar mapa
         function initMap() {
@@ -476,10 +361,9 @@ grafo: {
             });
         }
 
-        // Llenar selectores de estaciones
+        // Llenar selector de estaciones
         function fillStationSelectors() {
-            const startSelect = document.getElementById('start-station');
-            const endSelect = document.getElementById('end-station');
+            const metroSelect = document.getElementById('metro-station');
             
             Object.entries(metroData.lineas).forEach(([lineaId, linea]) => {
                 const optgroup = document.createElement('optgroup');
@@ -492,277 +376,389 @@ grafo: {
                     optgroup.appendChild(option);
                 });
                 
-                startSelect.appendChild(optgroup.cloneNode(true));
-                endSelect.appendChild(optgroup);
+                metroSelect.appendChild(optgroup);
             });
         }
 
-        // Algoritmo BFS para encontrar ruta
-        function findRoute(startId, endId) {
-            const queue = [{ node: startId, path: [startId] }];
-            const visited = new Set();
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Modo origen/destino
+            document.getElementById('mode-origin').addEventListener('click', () => {
+                currentMode = 'origin';
+                document.getElementById('mode-origin').classList.add('active');
+                document.getElementById('mode-destination').classList.remove('active');
+            });
             
-            while (queue.length > 0) {
-                const current = queue.shift();
-                
-                if (current.node === endId) {
-                    return current.path;
-                }
-                
-                if (!visited.has(current.node)) {
-                    visited.add(current.node);
+            document.getElementById('mode-destination').addEventListener('click', () => {
+                currentMode = 'destination';
+                document.getElementById('mode-destination').classList.add('active');
+                document.getElementById('mode-origin').classList.remove('active');
+            });
+            
+            // Seleccionar en el mapa
+            document.getElementById('select-on-map').addEventListener('click', () => {
+                selectionMode = true;
+                alert("Toca cualquier lugar del mapa para seleccionar " + 
+                     (currentMode === 'origin' ? 'el origen' : 'el destino'));
+            });
+            
+            // Calcular ruta
+            document.getElementById('calculate-route').addEventListener('click', calculateRoute);
+            
+            // Click en el mapa para selección
+            map.on('click', (e) => {
+                if (selectionMode) {
+                    const point = e.latlng;
                     
-                    const neighbors = metroData.grafo[current.node] || [];
-                    for (const neighbor of neighbors) {
-                        queue.push({
-                            node: neighbor,
-                            path: [...current.path, neighbor]
-                        });
+                    if (currentMode === 'origin') {
+                        if (customOrigin) map.removeLayer(customOrigin);
+                        customOrigin = L.marker(point, {
+                            icon: L.divIcon({
+                                html: '<div style="font-size:24px; text-shadow:0 2px 4px rgba(0,0,0,0.2)">🟢</div>',
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 32]
+                            })
+                        }).addTo(map)
+                        .bindPopup(`<div class="custom-point-popup"><b>Origen personalizado</b><br>${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}</div>`)
+                        .openPopup();
+                        
+                        document.getElementById('metro-station').value = '';
+                    } else {
+                        if (customDestination) map.removeLayer(customDestination);
+                        customDestination = L.marker(point, {
+                            icon: L.divIcon({
+                                html: '<div style="font-size:24px; text-shadow:0 2px 4px rgba(0,0,0,0.2)">🔴</div>',
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 32]
+                            })
+                        }).addTo(map)
+                        .bindPopup(`<div class="custom-point-popup"><b>Destino personalizado</b><br>${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}</div>`)
+                        .openPopup();
+                        
+                        document.getElementById('metro-station').value = '';
                     }
+                    
+                    selectionMode = false;
                 }
-            }
+            });
+
+            // Botones para ocultar paneles
+            document.getElementById('hide-control-panel-btn').addEventListener('click', () => {
+                document.getElementById('control-panel').classList.add('hidden');
+            });
+
+            document.getElementById('hide-route-panel-btn').addEventListener('click', () => {
+                document.getElementById('route-panel').classList.add('hidden');
+            });
             
-            return null; // No se encontró ruta
+            // Mostrar paneles al hacer clic en el mapa (opcional)
+            map.on('click', () => {
+                document.getElementById('control-panel').classList.remove('hidden');
+                document.getElementById('route-panel').classList.remove('hidden');
+            });
         }
 
-        // Calcular ruta óptima
-        function calculateRoute() {
-            const startId = document.getElementById('start-station').value;
-            const endId = document.getElementById('end-station').value;
+        // Encontrar la estación más cercana a un punto
+        function findNearestStation(point) {
+            let minDistance = Infinity;
+            let nearestStation = null;
             
-            if (!startId || !endId) {
-                alert("Selecciona estación de origen y destino");
+            Object.values(metroData.lineas).forEach(linea => {
+                linea.estaciones.forEach(estacion => {
+                    const distance = map.distance(point, estacion.coords);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestStation = estacion;
+                    }
+                });
+            });
+            
+            return nearestStation;
+        }
+
+        // Calcular ruta
+        function calculateRoute() {
+            // Obtener puntos de inicio y fin
+            const metroStationId = document.getElementById('metro-station').value;
+            let startPoint, endPoint;
+            
+            // Determinar origen
+            if (customOrigin) {
+                startPoint = {
+                    coords: customOrigin.getLatLng(),
+                    custom: true,
+                    nearestStation: findNearestStation(customOrigin.getLatLng())
+                };
+            } else if (metroStationId && currentMode === 'origin') {
+                startPoint = {
+                    coords: findStationById(metroStationId).coords,
+                    custom: false,
+                    station: findStationById(metroStationId)
+                };
+            } else {
+                alert("Selecciona un origen");
+                return;
+            }
+            
+            // Determinar destino
+            if (customDestination) {
+                endPoint = {
+                    coords: customDestination.getLatLng(),
+                    custom: true,
+                    nearestStation: findNearestStation(customDestination.getLatLng())
+                };
+            } else if (metroStationId && currentMode === 'destination') {
+                endPoint = {
+                    coords: findStationById(metroStationId).coords,
+                    custom: false,
+                    station: findStationById(metroStationId)
+                };
+            } else {
+                alert("Selecciona un destino");
                 return;
             }
             
             // Limpiar ruta anterior
             resetMap();
             
-            // Encontrar ruta
-            const routePath = findRoute(startId, endId);
-            
-            if (!routePath || routePath.length === 0) {
-                alert("No se encontró ruta entre las estaciones seleccionadas");
+            // Si ambos puntos son personalizados, mostrar ruta directa
+            if (startPoint.custom && endPoint.custom) {
+                showDirectRoute(startPoint, endPoint);
                 return;
             }
             
-            // Obtener detalles de las estaciones en la ruta
-            const routeStations = routePath.map(id => {
-                for (const linea of Object.values(metroData.lineas)) {
-                    for (const estacion of linea.estaciones) {
-                        if (estacion.id === id) {
-                            return {
-                                ...estacion,
-                                linea: Object.entries(metroData.lineas).find(([_, l]) => 
-                                    l.estaciones.some(e => e.id === id))[0]
-                            };
-                        }
-                    }
-                }
-                return null;
-            }).filter(Boolean);
+            // Calcular ruta usando el metro
+            let routeStations = [];
             
-            // Dibujar ruta en el mapa
-            drawRouteOnMap(routeStations);
-            
-            // Mostrar instrucciones
-            showRouteInstructions(routeStations);
-            
-            // Ajustar vista del mapa
-            const bounds = L.latLngBounds(routeStations.map(s => s.coords));
-            map.fitBounds(bounds, { padding: [50, 50] });
-        }
-
-        // Dibujar ruta en el mapa
-        function drawRouteOnMap(stations) {
-            const routeCoords = stations.map(s => s.coords);
-            
-            // Dibujar línea principal
-            currentRoute = L.polyline(routeCoords, {
-                color: '#5856D6',
-                weight: 6,
-                opacity: 0.9,
-                dashArray: '8, 8'
-            }).addTo(map);
-            
-            // Resaltar estaciones en la ruta
-            stations.forEach((station, index) => {
-                const isTransfer = index > 0 && index < stations.length - 1 && 
-                                  station.transfer && 
-                                  stations[index-1].linea !== stations[index+1].linea;
-                
-                const icon = L.divIcon({
-                    className: 'route-station',
-                    html: `
-                        <div style="
-                            width: ${isTransfer ? '28px' : '24px'};
-                            height: ${isTransfer ? '28px' : '24px'};
-                            background: ${metroData.lineas[station.linea].color};
-                            border-radius: 50%;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            color: white;
-                            font-size: ${isTransfer ? '14px' : '12px'};
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                        ">
-                            ${isTransfer ? '⇄' : '•'}
-                        </div>
-                    `,
-                    iconSize: [isTransfer ? 28 : 24, isTransfer ? 28 : 24],
-                    iconAnchor: [isTransfer ? 14 : 12, isTransfer ? 14 : 12]
+            // Si el origen es personalizado, empezar desde la estación más cercana
+            if (startPoint.custom) {
+                routeStations.push({
+                    ...startPoint.nearestStation,
+                    linea: findLineForStation(startPoint.nearestStation.id),
+                    isFromCustom: true,
+                    customPoint: startPoint.coords
                 });
-                
-                L.marker(station.coords, {icon: icon})
-                    .addTo(map)
-                    .bindPopup(`
-                        <div style="font-weight:600">${station.nombre}</div>
-                        <div style="color:${metroData.lineas[station.linea].color}">
-                            Línea ${station.linea} ${isTransfer ? '(Transferencia)' : ''}
-                        </div>
-                    `);
+            } else {
+                routeStations.push({
+                    ...startPoint.station,
+                    linea: findLineForStation(startPoint.station.id)
+                });
+            }
+            
+            // Si el destino es personalizado, terminar en la estación más cercana
+            const targetStation = endPoint.custom ? endPoint.nearestStation : endPoint.station;
+            
+            // Calcular ruta entre estaciones
+            const metroRoute = findRoute(routeStations[0].id, targetStation.id);
+            
+            if (!metroRoute || metroRoute.length === 0) {
+                alert("No se encontró ruta");
+                return;
+            }
+            
+            // Agregar estaciones intermedias
+            metroRoute.slice(1).forEach(stationId => {
+                const station = findStationById(stationId);
+                routeStations.push({
+                    ...station,
+                    linea: findLineForStation(stationId)
+                });
             });
             
-            // Marcar origen y destino
-            startMarker = L.marker(stations[0].coords, {
+            // Si el destino es personalizado, agregar el punto final
+            if (endPoint.custom) {
+                routeStations.push({
+                    ...endPoint.nearestStation,
+                    linea: findLineForStation(endPoint.nearestStation.id),
+                    isToCustom: true,
+                    customPoint: endPoint.coords
+                });
+            }
+            
+            // Dibujar ruta completa
+            drawCompleteRoute(routeStations, startPoint, endPoint);
+            
+        }
+
+        function findStationById(id) {
+            for (const linea of Object.values(metroData.lineas)) {
+                for (const estacion of linea.estaciones) {
+                    if (estacion.id === id) {
+                        return estacion;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function findLineForStation(stationId) {
+            for (const [lineaId, linea] of Object.entries(metroData.lineas)) {
+                if (linea.estaciones.find(e => e.id === stationId)) {
+                    return lineaId;
+                }
+            }
+            return null;
+        }
+
+        // Algoritmo de búsqueda de ruta (BFS)
+        function findRoute(startId, endId) {
+            const queue = [startId];
+            const visited = new Set();
+            const parentMap = new Map();
+            
+            visited.add(startId);
+            
+            while (queue.length > 0) {
+                const currentId = queue.shift();
+                
+                if (currentId === endId) {
+                    break;
+                }
+                
+                const neighbors = metroData.grafo[currentId] || [];
+                
+                for (const neighborId of neighbors) {
+                    if (!visited.has(neighborId)) {
+                        visited.add(neighborId);
+                        parentMap.set(neighborId, currentId);
+                        queue.push(neighborId);
+                    }
+                }
+            }
+            
+            // Reconstruir la ruta desde el final
+            if (!parentMap.has(endId)) {
+                return null; // No se encontró ruta
+            }
+            
+            const route = [endId];
+            let currentId = endId;
+            while (currentId !== startId) {
+                currentId = parentMap.get(currentId);
+                route.unshift(currentId);
+            }
+            
+            return route;
+        }
+
+        function resetMap() {
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+            if (currentRoute) map.removeLayer(currentRoute);
+            currentRoute = null;
+        }
+
+        function showDirectRoute(startPoint, endPoint) {
+             startMarker = L.marker(startPoint.coords, {
                 icon: L.divIcon({
                     html: '<div style="font-size:24px; text-shadow:0 2px 4px rgba(0,0,0,0.2)">🟢</div>',
                     iconSize: [32, 32],
                     iconAnchor: [16, 32]
                 })
-            }).addTo(map).bindPopup(`<b>Origen:</b> ${stations[0].nombre}`).openPopup();
+            }).addTo(map)
+            .bindPopup(`<div class="custom-point-popup"><b>Origen</b><br>${startPoint.coords.lat.toFixed(4)}, ${startPoint.coords.lng.toFixed(4)}</div>`)
+            .openPopup();
             
-            endMarker = L.marker(stations[stations.length-1].coords, {
+             endMarker = L.marker(endPoint.coords, {
                 icon: L.divIcon({
                     html: '<div style="font-size:24px; text-shadow:0 2px 4px rgba(0,0,0,0.2)">🔴</div>',
                     iconSize: [32, 32],
                     iconAnchor: [16, 32]
                 })
-            }).addTo(map).bindPopup(`<b>Destino:</b> ${stations[stations.length-1].nombre}`).openPopup();
-        }
-
-        // Mostrar instrucciones de la ruta
-        function showRouteInstructions(stations) {
-            const routeSteps = document.getElementById('route-steps');
-            routeSteps.innerHTML = '';
+            }).addTo(map)
+            .bindPopup(`<div class="custom-point-popup"><b>Destino</b><br>${endPoint.coords.lat.toFixed(4)}, ${endPoint.coords.lng.toFixed(4)}</div>`)
+            .openPopup();
             
-            let currentLine = stations[0].linea;
-            let segmentStart = 0;
+            currentRoute = L.polyline([startPoint.coords, endPoint.coords], {
+                color: '#800080',
+                weight: 8,
+                opacity: 0.7,
+                dashArray: '10, 10'
+            }).addTo(map);
             
-            // Agrupar por líneas
-            for (let i = 1; i < stations.length; i++) {
-                if (i === stations.length - 1 || stations[i].linea !== currentLine) {
-                    const segment = stations.slice(segmentStart, i + 1);
-                    
-                    // Paso: Tomar línea X desde A hasta B
-                    const step = document.createElement('div');
-                    step.className = 'route-step';
-                    
-                    const lineColor = metroData.lineas[currentLine].color;
-                    
-                    step.innerHTML = `
-                        <div class="step-icon" style="background:${lineColor}">${currentLine}</div>
-                        <div class="step-content">
-                            <div class="step-line" style="color:${lineColor}">Línea ${currentLine}</div>
-                            <div class="step-station">Desde ${segment[0].nombre} hasta ${segment[segment.length-1].nombre}</div>
-                            <div>${segment.length} estaciones • ${calculateSegmentDistance(segment).toFixed(1)} km</div>
-                        </div>
-                    `;
-                    
-                    routeSteps.appendChild(step);
-                    
-                    // Si hay transferencia, agregar paso de cambio
-                    if (i < stations.length - 1 && stations[i].transfer) {
-                        const transferStep = document.createElement('div');
-                        transferStep.className = 'route-step';
-                        
-                        transferStep.innerHTML = `
-                            <div class="step-icon" style="background:#8E8E93">⇄</div>
-                            <div class="step-content">
-                                <div class="step-line" style="color:#8E8E93">Transferencia</div>
-                                <div class="step-station">Cambiar a Línea ${stations[i].linea} en ${stations[i].nombre}</div>
-                                <div>Siga las señales de conexión</div>
-                            </div>
-                        `;
-                        
-                        routeSteps.appendChild(transferStep);
-                    }
-                    
-                    currentLine = stations[i].linea;
-                    segmentStart = i;
-                }
-            }
-            
-            // Mostrar tiempo total estimado
-            const totalDistance = calculateRouteDistance(stations);
-            const totalTime = Math.round(totalDistance * 2 + stations.filter(s => s.transfer).length * 3);
-            
-            const summary = document.createElement('div');
-            summary.style.padding = "12px 0";
-            summary.style.fontWeight = "500";
-            summary.innerHTML = `
-                <div style="display:flex; justify-content:space-between;">
-                    <span>Total:</span>
-                    <span>${totalTime} min (${totalDistance.toFixed(1)} km)</span>
+            const routePanel = document.getElementById('route-panel');
+            const routeStepsDiv = document.getElementById('route-steps');
+            routeStepsDiv.innerHTML = `<div class="route-step">
+                <div class="step-icon" style="background-color:#800080">Directo</div>
+                <div class="step-content">
+                    <div class="step-line">Ruta directa entre los puntos seleccionados.</div>
+                    <div class="step-station">${startPoint.coords.lat.toFixed(4)}, ${startPoint.coords.lng.toFixed(4)}  →  ${endPoint.coords.lat.toFixed(4)}, ${endPoint.coords.lng.toFixed(4)}</div>
                 </div>
-            `;
+            </div>`;
+            routePanel.style.display = 'block';
+        }
+
+
+        function drawCompleteRoute(routeStations, startPoint, endPoint) {
+            const routeCoords = [];
+            const routePanel = document.getElementById('route-panel');
+            const routeStepsDiv = document.getElementById('route-steps');
+            routeStepsDiv.innerHTML = ''; // Clear previous route
             
-            routeSteps.appendChild(summary);
-            
-            // Mostrar panel
-            document.getElementById('route-panel').style.display = 'block';
-        }
-
-        // Calcular distancia de un segmento
-        function calculateSegmentDistance(stations) {
-            let distance = 0;
-            for (let i = 1; i < stations.length; i++) {
-                distance += calculateDistance(stations[i-1].coords, stations[i].coords);
-            }
-            return distance;
-        }
-
-        // Calcular distancia total de la ruta
-        function calculateRouteDistance(stations) {
-            return calculateSegmentDistance(stations);
-        }
-
-        // Calcular distancia entre dos puntos (Haversine)
-        function calculateDistance(coord1, coord2) {
-            const R = 6371;
-            const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
-            const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) * 
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-
-        // Limpiar mapa
-        function resetMap() {
-            if (currentRoute) map.removeLayer(currentRoute);
-            if (startMarker) map.removeLayer(startMarker);
-            if (endMarker) map.removeLayer(endMarker);
-            
-            // Restaurar estaciones a su estado original
-            stationMarkers.forEach(sm => {
-                map.removeLayer(sm.marker);
+            routeStations.forEach((station, index) => {
+                routeCoords.push(station.coords);
+                
+                const isFirst = index === 0;
+                const isLast = index === routeStations.length - 1;
+                
+                let stepIconColor = '#007AFF'; // Default color
+                if (station.linea === 'L1') stepIconColor = '#FF3B30';
+                else if (station.linea === 'L2') stepIconColor = '#007AFF';
+                else if (station.linea === 'L3') stepIconColor = '#34C759';
+                
+                let stepLineText = `Línea ${station.linea}`;
+                if (isFirst && station.isFromCustom) stepLineText = "Desde punto personalizado";
+                else if (isLast && station.isToCustom) stepLineText = "Hasta punto personalizado";
+                
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'route-step';
+                
+                const stepIconDiv = document.createElement('div');
+                stepIconDiv.className = 'step-icon';
+                stepIconDiv.style.backgroundColor = stepIconColor;
+                stepIconDiv.textContent = isFirst ? '🟢' : isLast ? '🔴' : '•';
+                
+                const stepContentDiv = document.createElement('div');
+                stepContentDiv.className = 'step-content';
+                
+                const stepLineDiv = document.createElement('div');
+                stepLineDiv.className = 'step-line';
+                stepLineDiv.textContent = stepLineText;
+                
+                const stepStationDiv = document.createElement('div');
+                stepStationDiv.className = 'step-station';
+                stepStationDiv.textContent = station.nombre;
+                if(isFirst && station.isFromCustom){
+                  stepStationDiv.textContent =  `Origen: ${startPoint.coords.lat.toFixed(4)}, ${startPoint.coords.lng.toFixed(4)} (Estación más cercana: ${station.nombre})`;
+                }
+                if(isLast && station.isToCustom){
+                    stepStationDiv.textContent =  `Destino: ${endPoint.coords.lat.toFixed(4)}, ${endPoint.coords.lng.toFixed(4)} (Estación más cercana: ${station.nombre})`;
+                }
+                
+                stepContentDiv.appendChild(stepLineDiv);
+                stepContentDiv.appendChild(stepStationDiv);
+                
+                stepDiv.appendChild(stepIconDiv);
+                stepDiv.appendChild(stepContentDiv);
+                
+                routeStepsDiv.appendChild(stepDiv);
             });
-            stationMarkers = [];
             
-            drawMetroLines();
+            // Dibujar la ruta en el mapa
+            currentRoute = L.polyline(routeCoords, {
+                color: '#800080',
+                weight: 8,
+                opacity: 0.7
+            }).addTo(map);
+            
+            // Mostrar el panel de ruta
+            routePanel.style.display = 'block';
         }
 
-        // Configurar event listeners
-        function setupEventListeners() {
-            document.getElementById('calculate-route').addEventListener('click', calculateRoute);
-        }
 
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', initMap);
+        // Inicializar la aplicación
+        initMap();
     </script>
 </body>
 </html>
+
