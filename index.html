@@ -47,6 +47,8 @@
             background-color: #f0f0f0;
             border-radius: 20px;
             padding: 10px;
+            display: flex;
+            align-items: center;
         }
 
         .search-bar input[type="text"] {
@@ -55,6 +57,16 @@
             width: 100%;
             padding: 5px;
             outline: none;
+            flex-grow: 1;
+        }
+
+        .search-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: none;
+            padding: 5px;
+            color: #007bff;
         }
 
         .suggestions-container {
@@ -324,6 +336,21 @@
             cursor: pointer;
         }
 
+        .selected-stop-icon {
+            background-color: #FBBC05;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+        }
+
+        .user-location-icon {
+            background-color: #4285F4;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+        }
     </style>
 </head>
 <body>
@@ -332,6 +359,9 @@
         <div class="search-container">
             <div class="search-bar">
                 <input type="text" id="search-input" placeholder="Buscar parada o línea">
+                <button class="search-button" id="search-button">
+                    <span class="material-icons">search</span>
+                </button>
             </div>
             <div class="suggestions-container" id="suggestions">
                 <!-- Las sugerencias se insertarán aquí dinámicamente -->
@@ -480,6 +510,7 @@
 
         // Elementos del DOM
         const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
         const suggestionsContainer = document.getElementById('suggestions');
         const mapButton = document.getElementById('map-button');
         const mapFullContainer = document.getElementById('map-full');
@@ -545,6 +576,13 @@
                 });
             });
             
+            // Ordenar por mejor coincidencia (puedes mejorar este algoritmo)
+            results.sort((a, b) => {
+                const aScore = a.name.toLowerCase().indexOf(lowerQuery);
+                const bScore = b.name.toLowerCase().indexOf(lowerQuery);
+                return aScore - bScore;
+            });
+            
             return results;
         }
 
@@ -604,6 +642,52 @@
             });
         }
 
+        // Función para manejar la selección de una parada
+        function selectStop(suggestion) {
+            searchInput.value = suggestion.name;
+            suggestionsContainer.style.display = 'none';
+            searchButton.style.display = 'none';
+            
+            // Cambiar a la vista del mapa
+            initialContent.style.display = 'none';
+            mapContent.style.display = 'block';
+            listContent.style.display = 'none';
+            settingsContent.style.display = 'none';
+            mapFullContainer.style.display = 'block';
+            closeMapButton.style.display = 'block';
+            bottomNav.style.display = 'flex';
+            mapFull.invalidateSize();
+            
+            // Centrar el mapa en la parada seleccionada con zoom más cercano
+            map.setView(suggestion.coordinates, 15);
+            mapFull.setView(suggestion.coordinates, 15);
+            
+            // Eliminar marcador de parada anterior si existe
+            if (selectedStopMarker) {
+                map.removeLayer(selectedStopMarker);
+                mapFull.removeLayer(selectedStopMarker);
+            }
+            
+            // Crear un icono personalizado para la parada seleccionada
+            const stopIcon = L.divIcon({
+                className: 'selected-stop-icon',
+                html: '<div style="background-color: #FBBC05; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
+                iconSize: [24, 24]
+            });
+            
+            // Añadir marcador para la parada seleccionada
+            selectedStopMarker = L.marker(suggestion.coordinates, {icon: stopIcon})
+                .bindPopup(`<b>${suggestion.line}</b><br>${suggestion.name}`)
+                .addTo(map);
+                
+            L.marker(suggestion.coordinates, {icon: stopIcon})
+                .bindPopup(`<b>${suggestion.line}</b><br>${suggestion.name}`)
+                .addTo(mapFull);
+            
+            // Mostrar la ruta desde la ubicación actual hasta la parada seleccionada
+            showRouteToStop(suggestion.coordinates);
+        }
+
         // Función para mostrar sugerencias
         function showSuggestions(query) {
             const suggestions = searchStops(query);
@@ -623,47 +707,7 @@
                 `;
                 
                 item.addEventListener('click', () => {
-                    searchInput.value = suggestion.name;
-                    suggestionsContainer.style.display = 'none';
-                    
-                    // Cambiar a la vista del mapa
-                    initialContent.style.display = 'none';
-                    mapContent.style.display = 'block';
-                    listContent.style.display = 'none';
-                    settingsContent.style.display = 'none';
-                    mapFullContainer.style.display = 'block';
-                    closeMapButton.style.display = 'block';
-                    bottomNav.style.display = 'flex';
-                    mapFull.invalidateSize();
-                    
-                    // Centrar el mapa en la parada seleccionada con zoom más cercano
-                    map.setView(suggestion.coordinates, 15);
-                    mapFull.setView(suggestion.coordinates, 15);
-                    
-                    // Eliminar marcador de parada anterior si existe
-                    if (selectedStopMarker) {
-                        map.removeLayer(selectedStopMarker);
-                        mapFull.removeLayer(selectedStopMarker);
-                    }
-                    
-                    // Crear un icono personalizado para la parada seleccionada
-                    const stopIcon = L.divIcon({
-                        className: 'selected-stop-icon',
-                        html: '<div style="background-color: #FBBC05; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
-                        iconSize: [24, 24]
-                    });
-                    
-                    // Añadir marcador para la parada seleccionada
-                    selectedStopMarker = L.marker(suggestion.coordinates, {icon: stopIcon})
-                        .bindPopup(`<b>${suggestion.line}</b><br>${suggestion.name}`)
-                        .addTo(map);
-                        
-                    L.marker(suggestion.coordinates, {icon: stopIcon})
-                        .bindPopup(`<b>${suggestion.line}</b><br>${suggestion.name}`)
-                        .addTo(mapFull);
-                    
-                    // Mostrar la ruta desde la ubicación actual hasta la parada seleccionada
-                    showRouteToStop(suggestion.coordinates);
+                    selectStop(suggestion);
                 });
                 
                 suggestionsContainer.appendChild(item);
@@ -674,12 +718,39 @@
 
         // Event listeners para el buscador
         searchInput.addEventListener('input', (e) => {
-            showSuggestions(e.target.value);
+            if (e.target.value.trim() !== '') {
+                searchButton.style.display = 'block';
+                showSuggestions(e.target.value);
+            } else {
+                searchButton.style.display = 'none';
+                suggestionsContainer.style.display = 'none';
+            }
         });
 
         searchInput.addEventListener('focus', () => {
             if (searchInput.value) {
                 showSuggestions(searchInput.value);
+            }
+        });
+
+        // Event listener para el botón de búsqueda
+        searchButton.addEventListener('click', () => {
+            const query = searchInput.value.trim();
+            if (query !== '') {
+                const suggestions = searchStops(query);
+                if (suggestions.length > 0) {
+                    // Seleccionar la primera sugerencia (la más parecida)
+                    selectStop(suggestions[0]);
+                } else {
+                    alert('No se encontraron resultados para: ' + query);
+                }
+            }
+        });
+
+        // Permitir búsqueda con Enter
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchButton.click();
             }
         });
 
