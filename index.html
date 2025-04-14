@@ -612,6 +612,7 @@
     { name: "Estación 1-36 - Chachapa", coordinates: [19.054104, -98.114623] },
     { name: "Estación 1-37 - Terminal Chachapa", coordinates: [19.054604, -98.11243] }
 ]
+
             },
             {
                 name: "Línea 2",
@@ -652,6 +653,7 @@
     { name: "Estación 2-33 - Diagonal Ote.", coordinates: [19.063871, -98.19516] },
     { name: "Estación 2-34 - Diagonal Pte.", coordinates: [19.062832, -98.197655] }
 ]
+
             },
             {
                 name: "Línea 3",
@@ -690,6 +692,7 @@
     { name: "Estación 3-27 - 27 Boulevard Norte", coordinates: [19.073859, -98.198964] },
     { name: "Estación 3-28 - Terminal CAPU", coordinates: [19.07508, -98.203699] }
 ]
+
             }
         ];
 
@@ -702,6 +705,8 @@
         let currentLocation = [19.0417, -98.2000];
         let routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
         let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || ["Centro", "Línea 1", "Estación 2-3"];
+        let metroMarkers = [];
+        let metroLines = [];
 
         // Elementos del DOM
         const searchInput = document.getElementById('search-input');
@@ -741,23 +746,83 @@
         }
 
         function drawMetroRoutes(mapToDraw) {
+            // Limpiar marcadores y líneas existentes
+            clearMetroRoutes(mapToDraw);
+            
+            // Dibujar solo las paradas cercanas (dentro de 2km)
+            const nearbyStops = getNearbyStops(currentLocation, 2000); // 2000 metros = 2km
+            
             metroRoutes.forEach(route => {
-                var polyline = L.polyline(route.stops.map(stop => stop.coordinates), {
-                    color: route.color,
-                    weight: 5,
-                    opacity: 0.7
-                }).addTo(mapToDraw);
-
-                route.stops.forEach(stop => {
-                    var marker = L.marker(stop.coordinates)
-                        .bindPopup(`<b>${route.name} - ${stop.name}</b>`)
-                        .addTo(mapToDraw);
-
-                    marker.on('click', function(e) {
-                        showStopDetails(stop, route);
+                // Filtrar solo las paradas cercanas para esta línea
+                const routeStops = route.stops.filter(stop => 
+                    nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
+                );
+                
+                if (routeStops.length > 0) {
+                    // Dibujar la línea solo si tiene paradas cercanas
+                    const line = L.polyline(routeStops.map(stop => stop.coordinates), {
+                        color: route.color,
+                        weight: 5,
+                        opacity: 0.7
+                    }).addTo(mapToDraw);
+                    
+                    metroLines.push({map: mapToDraw, line: line});
+                    
+                    // Dibujar marcadores para las paradas cercanas
+                    routeStops.forEach(stop => {
+                        const marker = L.marker(stop.coordinates)
+                            .bindPopup(`<b>${route.name} - ${stop.name}</b>`)
+                            .addTo(mapToDraw);
+                            
+                        metroMarkers.push({map: mapToDraw, marker: marker});
+                        
+                        marker.on('click', function(e) {
+                            showStopDetails(stop, route);
+                        });
                     });
+                }
+            });
+        }
+
+        function clearMetroRoutes(mapToDraw) {
+            // Eliminar marcadores específicos de este mapa
+            metroMarkers
+                .filter(m => m.map === mapToDraw)
+                .forEach(m => {
+                    m.map.removeLayer(m.marker);
+                });
+            metroMarkers = metroMarkers.filter(m => m.map !== mapToDraw);
+            
+            // Eliminar líneas específicas de este mapa
+            metroLines
+                .filter(l => l.map === mapToDraw)
+                .forEach(l => {
+                    l.map.removeLayer(l.line);
+                });
+            metroLines = metroLines.filter(l => l.map !== mapToDraw);
+        }
+
+        function getNearbyStops(location, maxDistance) {
+            const nearbyStops = [];
+            
+            metroRoutes.forEach(route => {
+                route.stops.forEach(stop => {
+                    const distance = L.latLng(location).distanceTo(L.latLng(stop.coordinates));
+                    if (distance <= maxDistance) {
+                        nearbyStops.push({
+                            name: stop.name,
+                            line: route.name,
+                            coordinates: stop.coordinates,
+                            distance: distance
+                        });
+                    }
                 });
             });
+            
+            // Ordenar por distancia (más cercanas primero)
+            nearbyStops.sort((a, b) => a.distance - b.distance);
+            
+            return nearbyStops;
         }
 
         function updateUserLocation(lat, lng) {
@@ -784,6 +849,10 @@
             L.marker(currentLocation, {icon: userIcon})
                 .bindPopup("<b>Tu ubicación</b>")
                 .addTo(mapFull);
+            
+            // Actualizar rutas mostradas basadas en la nueva ubicación
+            drawMetroRoutes(map);
+            drawMetroRoutes(mapFull);
         }
 
         function searchStops(query) {
@@ -792,28 +861,59 @@
             const results = [];
             const lowerQuery = query.toLowerCase();
             
-            metroRoutes.forEach(route => {
-                route.stops.forEach(stop => {
-                    if (stop.name.toLowerCase().includes(lowerQuery) || 
-                        route.name.toLowerCase().includes(lowerQuery)) {
-                        results.push({
-                            name: stop.name,
-                            line: route.name,
-                            coordinates: stop.coordinates,
-                            stopData: stop,
-                            routeData: route
-                        });
+            // Buscar solo en paradas cercanas (dentro de 2km)
+            const nearbyStops = getNearbyStops(currentLocation, 2000);
+            
+            nearbyStops.forEach(stop => {
+                if (stop.name.toLowerCase().includes(lowerQuery)) {
+                    const route = metroRoutes.find(r => r.name === stop.line);
+                    if (route) {
+                        const routeStop = route.stops.find(s => s.name === stop.name);
+                        if (routeStop) {
+                            results.push({
+                                name: stop.name,
+                                line: route.name,
+                                coordinates: stop.coordinates,
+                                stopData: routeStop,
+                                routeData: route
+                            });
+                        }
                     }
-                });
+                }
             });
             
-            results.sort((a, b) => {
-                const aScore = a.name.toLowerCase().indexOf(lowerQuery);
-                const bScore = b.name.toLowerCase().indexOf(lowerQuery);
-                return aScore - bScore;
+            // También buscar por nombre de línea
+            metroRoutes.forEach(route => {
+                if (route.name.toLowerCase().includes(lowerQuery)) {
+                    route.stops.forEach(stop => {
+                        if (nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)) {
+                            results.push({
+                                name: stop.name,
+                                line: route.name,
+                                coordinates: stop.coordinates,
+                                stopData: stop,
+                                routeData: route
+                            });
+                        }
+                    });
+                }
             });
             
-            return results;
+            // Eliminar duplicados
+            const uniqueResults = results.filter((result, index, self) =>
+                index === self.findIndex((t) => (
+                    t.name === result.name && t.line === result.line
+                ))
+            );
+            
+            // Ordenar por distancia
+            uniqueResults.sort((a, b) => {
+                const aDistance = L.latLng(currentLocation).distanceTo(L.latLng(a.coordinates));
+                const bDistance = L.latLng(currentLocation).distanceTo(L.latLng(b.coordinates));
+                return aDistance - bDistance;
+            });
+            
+            return uniqueResults;
         }
 
         function clearExistingRoutes() {
@@ -829,6 +929,10 @@
 
         function showRouteToStop(stopCoordinates, stopName, lineName) {
             clearExistingRoutes();
+            
+            // Ocultar todas las paradas y líneas excepto la seleccionada
+            clearMetroRoutes(map);
+            clearMetroRoutes(mapFull);
             
             // Guardar en el historial
             const routeInfo = {
@@ -1012,25 +1116,35 @@
         function loadMetroList() {
             metroListContainer.innerHTML = '';
             
+            // Mostrar solo paradas cercanas (dentro de 2km)
+            const nearbyStops = getNearbyStops(currentLocation, 2000);
+            
             metroRoutes.forEach(route => {
-                const routeList = document.createElement('ul');
-                routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
+                // Filtrar solo las paradas cercanas para esta línea
+                const routeStops = route.stops.filter(stop => 
+                    nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
+                );
                 
-                route.stops.forEach(stop => {
-                    const stopItem = document.createElement('li');
-                    stopItem.innerHTML = `
-                        <div>${stop.name}</div>
-                        <small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>
-                    `;
+                if (routeStops.length > 0) {
+                    const routeList = document.createElement('ul');
+                    routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
                     
-                    stopItem.addEventListener('click', () => {
-                        showStopDetails(stop, route);
+                    routeStops.forEach(stop => {
+                        const stopItem = document.createElement('li');
+                        stopItem.innerHTML = `
+                            <div>${stop.name}</div>
+                            <small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>
+                        `;
+                        
+                        stopItem.addEventListener('click', () => {
+                            showStopDetails(stop, route);
+                        });
+                        
+                        routeList.appendChild(stopItem);
                     });
                     
-                    routeList.appendChild(stopItem);
-                });
-                
-                metroListContainer.appendChild(routeList);
+                    metroListContainer.appendChild(routeList);
+                }
             });
         }
 
@@ -1179,6 +1293,10 @@
                 settingsContent.style.display = 'none';
                 bottomNav.style.display = 'flex';
                 updateNavigation('home');
+                
+                // Restaurar la visualización de rutas cercanas
+                drawMetroRoutes(map);
+                drawMetroRoutes(mapFull);
             });
 
             navHome.addEventListener('click', () => {
@@ -1190,6 +1308,10 @@
                 closeMapButton.style.display = 'none';
                 bottomNav.style.display = 'flex';
                 updateNavigation('home');
+                
+                // Restaurar la visualización de rutas cercanas
+                drawMetroRoutes(map);
+                drawMetroRoutes(mapFull);
             });
 
             listButton.addEventListener('click', () => {
