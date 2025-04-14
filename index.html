@@ -8,34 +8,48 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.css" />
     <style>
+        :root {
+            --primary-color: #007AFF;
+            --secondary-color: #34C759;
+            --background-color: #F2F2F7;
+            --card-color: #FFFFFF;
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --border-radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
         body {
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f0f0f0;
+            background-color: var(--background-color);
             min-height: 100vh;
             position: relative;
             padding-bottom: 56px;
             box-sizing: border-box;
+            color: var(--text-primary);
         }
 
         .container {
             width: 90%;
             max-width: 800px;
-            background-color: white;
-            border-radius: 20px;
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
             padding: 20px;
             margin-top: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow);
             margin-bottom: 76px;
         }
 
         h1 {
             text-align: center;
             margin-bottom: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
         .search-container {
@@ -44,20 +58,31 @@
         }
 
         .search-bar {
-            background-color: #f0f0f0;
-            border-radius: 20px;
-            padding: 10px;
+            background-color: rgba(142, 142, 147, 0.12);
+            border-radius: 10px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
+            transition: all 0.2s;
+        }
+
+        .search-bar:focus-within {
+            background-color: rgba(142, 142, 147, 0.18);
         }
 
         .search-bar input[type="text"] {
             border: none;
             background: transparent;
             width: 100%;
-            padding: 5px;
+            padding: 6px;
             outline: none;
             flex-grow: 1;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .search-bar input[type="text"]::placeholder {
+            color: var(--text-secondary);
         }
 
         .search-button {
@@ -66,7 +91,7 @@
             cursor: pointer;
             display: none;
             padding: 5px;
-            color: #007bff;
+            color: var(--primary-color);
         }
 
         .suggestions-container {
@@ -74,28 +99,31 @@
             top: 100%;
             left: 0;
             right: 0;
-            background-color: white;
-            border-radius: 0 0 20px 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: var(--card-color);
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            box-shadow: var(--shadow);
             z-index: 1000;
             max-height: 200px;
             overflow-y: auto;
             display: none;
+            border-top: 1px solid rgba(142, 142, 147, 0.1);
         }
 
         .suggestion-item {
-            padding: 10px 15px;
+            padding: 12px 16px;
             cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid rgba(142, 142, 147, 0.1);
+            transition: background-color 0.2s;
         }
 
         .suggestion-item:hover {
-            background-color: #f0f0f0;
+            background-color: rgba(142, 142, 147, 0.08);
         }
 
         .suggestion-item .line {
             font-size: 0.8em;
-            color: #666;
+            color: var(--text-secondary);
+            margin-top: 4px;
         }
 
         .recent-terms {
@@ -104,33 +132,43 @@
 
         .recent-terms h2 {
             font-size: 1em;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding-left: 4px;
         }
 
         .recent-terms ul {
             list-style: none;
             padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .recent-terms li {
-            background-color: #e0e0e0;
-            border-radius: 20px;
-            padding: 10px;
-            margin-bottom: 5px;
-            text-align: center;
+            background-color: rgba(142, 142, 147, 0.12);
+            border-radius: 50px;
+            padding: 8px 16px;
             cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+
+        .recent-terms li:hover {
+            background-color: rgba(142, 142, 147, 0.18);
         }
 
         .grid-container {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 20px;
         }
 
         .grid-item {
-            background-color: #e0e0e0;
-            border-radius: 20px;
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
             padding: 20px;
             text-align: center;
             display: flex;
@@ -138,30 +176,47 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: var(--shadow);
+        }
+
+        .grid-item:hover {
+            transform: translateY(-2px);
+            background-color: rgba(142, 142, 147, 0.05);
         }
 
         .grid-item .material-icons {
-            font-size: 40px;
-            margin-bottom: 10px;
-            color: #007bff;
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: var(--primary-color);
+            background-color: rgba(0, 122, 255, 0.1);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .grid-item p {
             margin-bottom: 0;
+            font-weight: 500;
         }
 
         .map-section {
-            border-radius: 20px;
+            border-radius: var(--border-radius);
             padding: 0;
             text-align: center;
             margin-bottom: 20px;
             position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow);
         }
 
         #map {
             height: 400px;
             width: 100%;
-            border-radius: 20px;
+            border-radius: var(--border-radius);
         }
 
         #map-full {
@@ -182,7 +237,7 @@
         }
 
         .bottom-nav {
-            background-color: white;
+            background-color: var(--card-color);
             width: 100%;
             display: flex;
             justify-content: space-around;
@@ -191,12 +246,25 @@
             bottom: 0;
             left: 0;
             z-index: 1000;
-            box-shadow: 0px -2px 5px rgba(0,0,0,0.05);
+            box-shadow: 0px -2px 10px rgba(0,0,0,0.05);
             box-sizing: border-box;
+            border-top: 1px solid rgba(142, 142, 147, 0.1);
         }
 
         .bottom-nav .material-icons {
-            font-size: 30px;
+            font-size: 28px;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .bottom-nav .material-icons.active {
+            color: var(--primary-color);
+        }
+
+        .bottom-nav .material-icons:hover {
+            background-color: rgba(142, 142, 147, 0.1);
         }
 
         .close-button {
@@ -208,6 +276,13 @@
             cursor: pointer;
             z-index: 1001;
             display: none;
+            background-color: rgba(0, 0, 0, 0.6);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #initial-content {
@@ -228,14 +303,16 @@
 
         .list-container {
             padding: 20px;
-            border-radius: 20px;
-            background-color: #fff;
+            border-radius: var(--border-radius);
+            background-color: var(--card-color);
             margin-top: 20px;
+            box-shadow: var(--shadow);
         }
 
         .list-container h2 {
-            margin-bottom: 10px;
+            margin-bottom: 16px;
             text-align: center;
+            font-weight: 600;
         }
 
         .list-container ul {
@@ -245,9 +322,14 @@
         }
 
         .list-container li {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(142, 142, 147, 0.1);
             cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .list-container li:hover {
+            background-color: rgba(142, 142, 147, 0.08);
         }
 
         .list-container li:last-child {
@@ -256,40 +338,50 @@
 
         .settings-container {
             padding: 20px;
-            border-radius: 20px;
-            background-color: #fff;
+            border-radius: var(--border-radius);
+            background-color: var(--card-color);
             margin-top: 20px;
+            box-shadow: var(--shadow);
         }
 
         .settings-container h2 {
             margin-bottom: 20px;
             text-align: center;
+            font-weight: 600;
         }
 
         .settings-container label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
         }
 
         .settings-container input[type="number"] {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
+            padding: 12px;
+            border: 1px solid rgba(142, 142, 147, 0.2);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 16px;
+            background-color: var(--background-color);
         }
 
         .settings-container button {
-            background-color: #007bff;
+            background-color: var(--primary-color);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: 500;
+            font-size: 16px;
+            width: 100%;
+            transition: opacity 0.2s;
         }
 
         .settings-container button:hover {
-            background-color: #0056b3;
+            opacity: 0.9;
         }
 
         .history-list {
@@ -299,42 +391,44 @@
         }
 
         .history-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(142, 142, 147, 0.1);
             cursor: pointer;
+            transition: background-color 0.2s;
         }
 
         .history-item:hover {
-            background-color: #f5f5f5;
+            background-color: rgba(142, 142, 147, 0.08);
         }
 
-        #navigation-button {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1001;
-            background-color: #fff;
-            color: #007bff;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            border: 1px solid #ddd;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            display: none;
-            font-size: 16px;
+        .history-item strong {
+            display: block;
+            margin-bottom: 4px;
         }
 
-        #navigation-button:hover {
-            background-color: #f0f0f0;
+        .history-item small {
+            color: var(--text-secondary);
+            font-size: 0.8em;
+        }
+
+        #clear-history {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            margin-top: 16px;
+        }
+
+        #clear-history:hover {
+            background-color: rgba(0, 122, 255, 0.1);
         }
 
         .leaflet-routing-container {
-            background-color: white;
+            background-color: var(--card-color);
             padding: 10px;
             border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow);
             margin-bottom: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         .leaflet-routing-alternatives-container {
@@ -342,19 +436,19 @@
         }
 
         .leaflet-routing-route {
-            color: #007bff;
+            color: var(--primary-color);
             padding: 5px;
             border-radius: 5px;
             margin-bottom: 5px;
         }
 
         .leaflet-routing-route:hover {
-            background-color: #e0e0e0;
+            background-color: rgba(142, 142, 147, 0.08);
             cursor: pointer;
         }
 
         .selected-stop-icon {
-            background-color: #FBBC05;
+            background-color: #FF9500;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -362,11 +456,23 @@
         }
 
         .user-location-icon {
-            background-color: #4285F4;
+            background-color: var(--primary-color);
             border-radius: 50%;
             width: 20px;
             height: 20px;
             border: 2px solid white;
+        }
+
+        .metro-line-1 {
+            color: #FF3B30;
+        }
+
+        .metro-line-2 {
+            color: #007AFF;
+        }
+
+        .metro-line-3 {
+            color: #34C759;
         }
     </style>
 </head>
@@ -386,10 +492,8 @@
         </div>
         <div class="recent-terms">
             <h2>Términos recientes</h2>
-            <ul>
-                <li>Centro</li>
-                <li>Línea 1</li>
-                <li>Estación 2-3</li>
+            <ul id="recent-terms-list">
+                <!-- Términos recientes se cargarán dinámicamente -->
             </ul>
         </div>
         <div class="grid-container">
@@ -437,15 +541,15 @@
             <div class="history-list" id="route-history">
                 <!-- Historial de rutas se insertará aquí -->
             </div>
-            <button id="clear-history" style="margin-top: 10px;">Limpiar Historial</button>
+            <button id="clear-history">Limpiar Historial</button>
         </div>
     </div>
 
     <div class="bottom-nav">
-        <span class="material-icons">home</span>
-        <span class="material-icons">list</span>
-        <span class="material-icons">map</span>
-        <span class="material-icons">person</span>
+        <span class="material-icons active" id="nav-home">home</span>
+        <span class="material-icons" id="nav-list">list</span>
+        <span class="material-icons" id="nav-map">map</span>
+        <span class="material-icons" id="nav-settings">settings</span>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -468,7 +572,7 @@
         var metroRoutes = [
             {
                 name: "Línea 1",
-                color: "#ff0000",
+                color: "#FF3B30",
                 stops: [
                     { name: "Estación 1-1 - Centro", coordinates: [19.0500, -98.2100] },
                     { name: "Estación 1-2 - Universidad", coordinates: [19.0450, -98.2050] },
@@ -479,7 +583,7 @@
             },
             {
                 name: "Línea 2",
-                color: "#0000ff",
+                color: "#007AFF",
                 stops: [
                     { name: "Estación 2-1 - Norte", coordinates: [19.0600, -98.2200] },
                     { name: "Estación 2-2 - Hospital", coordinates: [19.0550, -98.2150] },
@@ -490,7 +594,7 @@
             },
             {
                 name: "Línea 3",
-                color: "#00ff00",
+                color: "#34C759",
                 stops: [
                     { name: "Estación 3-1 - Este", coordinates: [19.0700, -98.2300] },
                     { name: "Estación 3-2 - Estadio", coordinates: [19.0650, -98.2250] },
@@ -509,6 +613,7 @@
         let mapCenter = [19.0417, -98.2000];
         let currentLocation = [19.0417, -98.2000];
         let routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || ["Centro", "Línea 1", "Estación 2-3"];
 
         // Elementos del DOM
         const searchInput = document.getElementById('search-input');
@@ -528,9 +633,13 @@
         const saveLocationButton = document.getElementById('save-location');
         const latitudeInput = document.getElementById('latitude');
         const longitudeInput = document.getElementById('longitude');
-        const recentTermsItems = document.querySelectorAll('.recent-terms li');
+        const recentTermsList = document.getElementById('recent-terms-list');
         const routeHistoryContainer = document.getElementById('route-history');
         const clearHistoryButton = document.getElementById('clear-history');
+        const navHome = document.getElementById('nav-home');
+        const navList = document.getElementById('nav-list');
+        const navMap = document.getElementById('nav-map');
+        const navSettings = document.getElementById('nav-settings');
 
         // Inicialización
         function initialize() {
@@ -538,6 +647,7 @@
             drawMetroRoutes(mapFull);
             updateUserLocation(mapCenter[0], mapCenter[1]);
             updateRouteHistoryDisplay();
+            updateRecentSearchesDisplay();
             setupEventListeners();
             loadMetroList();
         }
@@ -575,7 +685,7 @@
             
             const userIcon = L.divIcon({
                 className: 'user-location-icon',
-                html: '<div style="background-color: #4285F4; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
+                html: '<div style="background-color: #007AFF; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
                 iconSize: [24, 24]
             });
             
@@ -657,6 +767,17 @@
                 updateRouteHistoryDisplay();
             }
             
+            // Guardar en búsquedas recientes
+            const searchTerm = `${stopName} (${lineName})`;
+            if (!recentSearches.includes(searchTerm)) {
+                recentSearches.unshift(searchTerm);
+                if (recentSearches.length > 5) {
+                    recentSearches.pop();
+                }
+                localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+                updateRecentSearchesDisplay();
+            }
+            
             // Crear la ruta en el mapa principal
             routingControl = L.Routing.control({
                 waypoints: [
@@ -667,7 +788,7 @@
                 showAlternatives: false,
                 addWaypoints: false,
                 lineOptions: {
-                    styles: [{color: '#4285F4', opacity: 0.7, weight: 5}]
+                    styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
                 },
                 createMarker: function() { return null; }
             }).addTo(map);
@@ -682,7 +803,7 @@
                 showAlternatives: false,
                 addWaypoints: false,
                 lineOptions: {
-                    styles: [{color: '#4285F4', opacity: 0.7, weight: 5}]
+                    styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
                 },
                 createMarker: function() { return null; }
             }).addTo(mapFull);
@@ -710,14 +831,7 @@
             searchButton.style.display = 'none';
             
             // Cambiar a la vista del mapa
-            initialContent.style.display = 'none';
-            mapContent.style.display = 'block';
-            listContent.style.display = 'none';
-            settingsContent.style.display = 'none';
-            mapFullContainer.style.display = 'block';
-            closeMapButton.style.display = 'block';
-            bottomNav.style.display = 'flex';
-            mapFull.invalidateSize();
+            showMapView();
             
             // Centrar el mapa en la parada seleccionada
             map.setView(suggestion.coordinates, 15);
@@ -738,7 +852,7 @@
             
             const stopIcon = L.divIcon({
                 className: 'selected-stop-icon',
-                html: '<div style="background-color: #FBBC05; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
+                html: '<div style="background-color: #FF9500; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
                 iconSize: [24, 24]
             });
             
@@ -753,14 +867,7 @@
 
         function showStopDetails(stop, route) {
             // Cambiar a la vista del mapa
-            initialContent.style.display = 'none';
-            mapContent.style.display = 'block';
-            listContent.style.display = 'none';
-            settingsContent.style.display = 'none';
-            mapFullContainer.style.display = 'block';
-            closeMapButton.style.display = 'block';
-            bottomNav.style.display = 'flex';
-            mapFull.invalidateSize();
+            showMapView();
             
             // Centrar el mapa en la parada seleccionada
             map.setView(stop.coordinates, 15);
@@ -771,6 +878,20 @@
             
             // Mostrar la ruta
             showRouteToStop(stop.coordinates, stop.name, route.name);
+        }
+
+        function showMapView() {
+            initialContent.style.display = 'none';
+            mapContent.style.display = 'block';
+            listContent.style.display = 'none';
+            settingsContent.style.display = 'none';
+            mapFullContainer.style.display = 'block';
+            closeMapButton.style.display = 'block';
+            bottomNav.style.display = 'flex';
+            mapFull.invalidateSize();
+            
+            // Actualizar navegación
+            updateNavigation('map');
         }
 
         function showSuggestions(query) {
@@ -805,13 +926,13 @@
             
             metroRoutes.forEach(route => {
                 const routeList = document.createElement('ul');
-                routeList.innerHTML = `<h3 style="color: ${route.color}">${route.name}</h3>`;
+                routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
                 
                 route.stops.forEach(stop => {
                     const stopItem = document.createElement('li');
                     stopItem.innerHTML = `
                         <div>${stop.name}</div>
-                        <small>${route.name}</small>
+                        <small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>
                     `;
                     
                     stopItem.addEventListener('click', () => {
@@ -843,15 +964,7 @@
                 `;
                 
                 item.addEventListener('click', () => {
-                    // Cambiar a la vista del mapa
-                    initialContent.style.display = 'none';
-                    mapContent.style.display = 'block';
-                    listContent.style.display = 'none';
-                    settingsContent.style.display = 'none';
-                    mapFullContainer.style.display = 'block';
-                    closeMapButton.style.display = 'block';
-                    bottomNav.style.display = 'flex';
-                    mapFull.invalidateSize();
+                    showMapView();
                     
                     // Centrar el mapa en la parada seleccionada
                     map.setView(route.to, 15);
@@ -870,6 +983,56 @@
                 
                 routeHistoryContainer.appendChild(item);
             });
+        }
+
+        function updateRecentSearchesDisplay() {
+            recentTermsList.innerHTML = '';
+            
+            if (recentSearches.length === 0) {
+                recentTermsList.innerHTML = '<li>No hay búsquedas recientes</li>';
+                return;
+            }
+            
+            recentSearches.forEach(term => {
+                const item = document.createElement('li');
+                item.textContent = term;
+                
+                item.addEventListener('click', () => {
+                    // Buscar directamente el término
+                    const suggestions = searchStops(term);
+                    if (suggestions.length > 0) {
+                        selectStop(suggestions[0]);
+                    } else {
+                        alert('No se encontraron resultados para: ' + term);
+                    }
+                });
+                
+                recentTermsList.appendChild(item);
+            });
+        }
+
+        function updateNavigation(activeView) {
+            // Reset all icons
+            navHome.classList.remove('active');
+            navList.classList.remove('active');
+            navMap.classList.remove('active');
+            navSettings.classList.remove('active');
+            
+            // Set active icon
+            switch(activeView) {
+                case 'home':
+                    navHome.classList.add('active');
+                    break;
+                case 'list':
+                    navList.classList.add('active');
+                    break;
+                case 'map':
+                    navMap.classList.add('active');
+                    break;
+                case 'settings':
+                    navSettings.classList.add('active');
+                    break;
+            }
         }
 
         function setupEventListeners() {
@@ -914,24 +1077,9 @@
                 }
             });
 
-            // Términos recientes
-            recentTermsItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    searchInput.value = item.textContent;
-                    showSuggestions(item.textContent);
-                });
-            });
-
             // Navegación
             mapButton.addEventListener('click', () => {
-                initialContent.style.display = 'none';
-                mapContent.style.display = 'block';
-                listContent.style.display = 'none';
-                settingsContent.style.display = 'none';
-                mapFullContainer.style.display = 'block';
-                closeMapButton.style.display = 'block';
-                bottomNav.style.display = 'flex';
-                mapFull.invalidateSize();
+                showMapView();
             });
 
             closeMapButton.addEventListener('click', () => {
@@ -942,10 +1090,10 @@
                 listContent.style.display = 'none';
                 settingsContent.style.display = 'none';
                 bottomNav.style.display = 'flex';
+                updateNavigation('home');
             });
 
-            const homeButton = document.querySelector('.bottom-nav span:nth-child(1)');
-            homeButton.addEventListener('click', () => {
+            navHome.addEventListener('click', () => {
                 initialContent.style.display = 'block';
                 mapContent.style.display = 'none';
                 listContent.style.display = 'none';
@@ -953,6 +1101,7 @@
                 mapFullContainer.style.display = 'none';
                 closeMapButton.style.display = 'none';
                 bottomNav.style.display = 'flex';
+                updateNavigation('home');
             });
 
             listButton.addEventListener('click', () => {
@@ -961,27 +1110,20 @@
                 listContent.style.display = 'block';
                 settingsContent.style.display = 'none';
                 bottomNav.style.display = 'flex';
+                updateNavigation('list');
             });
 
-            const listBottomButton = document.querySelector('.bottom-nav span:nth-child(2)');
-            listBottomButton.addEventListener('click', () => {
+            navList.addEventListener('click', () => {
                 initialContent.style.display = 'none';
                 mapContent.style.display = 'none';
                 listContent.style.display = 'block';
                 settingsContent.style.display = 'none';
                 bottomNav.style.display = 'flex';
+                updateNavigation('list');
             });
 
-            const mapBottomButton = document.querySelector('.bottom-nav span:nth-child(3)');
-            mapBottomButton.addEventListener('click', () => {
-                initialContent.style.display = 'none';
-                mapContent.style.display = 'block';
-                listContent.style.display = 'none';
-                settingsContent.style.display = 'none';
-                mapFullContainer.style.display = 'block';
-                closeMapButton.style.display = 'block';
-                bottomNav.style.display = 'flex';
-                mapFull.invalidateSize();
+            navMap.addEventListener('click', () => {
+                showMapView();
             });
 
             settingsButton.addEventListener('click', () => {
@@ -990,6 +1132,16 @@
                 listContent.style.display = 'none';
                 settingsContent.style.display = 'block';
                 bottomNav.style.display = 'flex';
+                updateNavigation('settings');
+            });
+
+            navSettings.addEventListener('click', () => {
+                initialContent.style.display = 'none';
+                mapContent.style.display = 'none';
+                listContent.style.display = 'none';
+                settingsContent.style.display = 'block';
+                bottomNav.style.display = 'flex';
+                updateNavigation('settings');
             });
 
             // Configuración
@@ -1002,6 +1154,7 @@
                     alert('Ubicación guardada correctamente.');
                     initialContent.style.display = 'block';
                     settingsContent.style.display = 'none';
+                    updateNavigation('home');
                 } else {
                     alert('Por favor, introduce valores de latitud y longitud válidos.');
                 }
