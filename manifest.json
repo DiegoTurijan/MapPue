@@ -7,17 +7,17 @@
   "theme_color": "#007AFF",
   "icons": [
     {
-      "src": "/MapPue/icons/icon-72x72.png",
-      "sizes": "72x72",
+      "src": "/MapPue/Icons/Copia de play_store_512.png",
+      "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/MapPue/icons/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "/MapPue/Icons/Copia de play_store_512.png",
+      "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/MapPue/icons/icon-512x512.png",
+      "src": "/MapPue/Icons/Copia de play_store_512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
