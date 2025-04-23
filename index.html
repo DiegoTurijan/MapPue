@@ -1,1409 +1,1331 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transportes Puebla</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.css" />
-    <style>
-        :root {
-            --primary-color: #007AFF;
-            --secondary-color: #34C759;
-            --background-color: #F2F2F7;
-            --card-color: #FFFFFF;
-            --text-primary: #1C1C1E;
-            --text-secondary: #8E8E93;
-            --border-radius: 12px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: var(--background-color);
-            min-height: 100vh;
-            position: relative;
-            padding-bottom: 56px;
-            box-sizing: border-box;
-            color: var(--text-primary);
-        }
-
-        .container {
-            width: 90%;
-            max-width: 800px;
-            background-color: var(--card-color);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: var(--shadow);
-            margin-bottom: 76px;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .search-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .search-bar {
-            background-color: rgba(142, 142, 147, 0.12);
-            border-radius: 10px;
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            transition: all 0.2s;
-        }
-
-        .search-bar:focus-within {
-            background-color: rgba(142, 142, 147, 0.18);
-        }
-
-        .search-bar input[type="text"] {
-            border: none;
-            background: transparent;
-            width: 100%;
-            padding: 6px;
-            outline: none;
-            flex-grow: 1;
-            font-size: 16px;
-            color: var(--text-primary);
-        }
-
-        .search-bar input[type="text"]::placeholder {
-            color: var(--text-secondary);
-        }
-
-        .search-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            display: none;
-            padding: 5px;
-            color: var(--primary-color);
-        }
-
-        .suggestions-container {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: var(--card-color);
-            border-radius: 0 0 var(--border-radius) var(--border-radius);
-            box-shadow: var(--shadow);
-            z-index: 1000;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            border-top: 1px solid rgba(142, 142, 147, 0.1);
-        }
-
-        .suggestion-item {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid rgba(142, 142, 147, 0.1);
-            transition: background-color 0.2s;
-        }
-
-        .suggestion-item:hover {
-            background-color: rgba(142, 142, 147, 0.08);
-        }
-
-        .suggestion-item .line {
-            font-size: 0.8em;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .recent-terms {
-            margin-bottom: 20px;
-        }
-
-        .recent-terms h2 {
-            font-size: 1em;
-            margin-bottom: 12px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            padding-left: 4px;
-        }
-
-        .recent-terms ul {
-            list-style: none;
-            padding: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .recent-terms li {
-            background-color: rgba(142, 142, 147, 0.12);
-            border-radius: 50px;
-            padding: 8px 16px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 14px;
-        }
-
-        .recent-terms li:hover {
-            background-color: rgba(142, 142, 147, 0.18);
-        }
-
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .grid-item {
-            background-color: var(--card-color);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-            box-shadow: var(--shadow);
-        }
-
-        .grid-item:hover {
-            transform: translateY(-2px);
-            background-color: rgba(142, 142, 147, 0.05);
-        }
-
-        .grid-item .material-icons {
-            font-size: 32px;
-            margin-bottom: 12px;
-            color: var(--primary-color);
-            background-color: rgba(0, 122, 255, 0.1);
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .grid-item p {
-            margin-bottom: 0;
-            font-weight: 500;
-        }
-
-        .map-section {
-            border-radius: var(--border-radius);
-            padding: 0;
-            text-align: center;
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-        }
-
-        #map {
-            height: 400px;
-            width: 100%;
-            border-radius: var(--border-radius);
-        }
-
-        #map-full {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            display: none;
-            border-radius: 0;
-        }
-
-        #map-full .leaflet-container {
-            height: 100%;
-            width: 100%;
-        }
-
-        .bottom-nav {
-            background-color: var(--card-color);
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            z-index: 1000;
-            box-shadow: 0px -2px 10px rgba(0,0,0,0.05);
-            box-sizing: border-box;
-            border-top: 1px solid rgba(142, 142, 147, 0.1);
-        }
-
-        .bottom-nav .material-icons {
-            font-size: 28px;
-            padding: 8px;
-            border-radius: 50%;
-            transition: background-color 0.2s;
-            color: var(--text-secondary);
-        }
-
-        .bottom-nav .material-icons.active {
-            color: var(--primary-color);
-        }
-
-        .bottom-nav .material-icons:hover {
-            background-color: rgba(142, 142, 147, 0.1);
-        }
-
-        .close-button {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: white;
-            font-size: 30px;
-            cursor: pointer;
-            z-index: 1001;
-            display: none;
-            background-color: rgba(0, 0, 0, 0.6);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #initial-content {
-            display: block;
-        }
-
-        #map-content {
-            display: none;
-        }
-
-        #list-content {
-            display: none;
-        }
-
-        #settings-content {
-            display: none;
-        }
-
-        .list-container {
-            padding: 20px;
-            border-radius: var(--border-radius);
-            background-color: var(--card-color);
-            margin-top: 20px;
-            box-shadow: var(--shadow);
-        }
-
-        .list-container h2 {
-            margin-bottom: 16px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .list-container ul {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-
-        .list-container li {
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(142, 142, 147, 0.1);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .list-container li:hover {
-            background-color: rgba(142, 142, 147, 0.08);
-        }
-
-        .list-container li:last-child {
-            border-bottom: none;
-        }
-
-        .settings-container {
-            padding: 20px;
-            border-radius: var(--border-radius);
-            background-color: var(--card-color);
-            margin-top: 20px;
-            box-shadow: var(--shadow);
-        }
-
-        .settings-container h2 {
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .settings-container label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .settings-container input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(142, 142, 147, 0.2);
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 16px;
-            background-color: var(--background-color);
-        }
-
-        .settings-container button {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 16px;
-            width: 100%;
-            transition: opacity 0.2s;
-        }
-
-        .settings-container button:hover {
-            opacity: 0.9;
-        }
-
-        .history-list {
-            margin-top: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .history-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(142, 142, 147, 0.1);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .history-item:hover {
-            background-color: rgba(142, 142, 147, 0.08);
-        }
-
-        .history-item strong {
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .history-item small {
-            color: var(--text-secondary);
-            font-size: 0.8em;
-        }
-
-        #clear-history {
-            background-color: transparent;
-            color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-            margin-top: 16px;
-        }
-
-        #clear-history:hover {
-            background-color: rgba(0, 122, 255, 0.1);
-        }
-
-        .leaflet-routing-container {
-            background-color: var(--card-color);
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        .leaflet-routing-alternatives-container {
-            display: none;
-        }
-
-        .leaflet-routing-route {
-            color: var(--primary-color);
-            padding: 5px;
-            border-radius: 5px;
-            margin-bottom: 5px;
-        }
-
-        .leaflet-routing-route:hover {
-            background-color: rgba(142, 142, 147, 0.08);
-            cursor: pointer;
-        }
-
-        .selected-stop-icon {
-            background-color: #FF9500;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-        }
-
-        .user-location-icon {
-            background-color: var(--primary-color);
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-        }
-
-        .metro-line-1 {
-            color: #FF3B30;
-        }
-
-        .metro-line-2 {
-            color: #007AFF;
-        }
-
-        .metro-line-3 {
-            color: #34C759;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transportes Puebla</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.css" />
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+--primary-color: #007AFF;
+--secondary-color: #34C759;
+--background-color: #F2F2F7;
+--card-color: #FFFFFF;
+--text-primary: #1C1C1E;
+--text-secondary: #8E8E93;
+--border-radius: 12px;
+--shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+margin: 0;
+padding: 0;
+display: flex;
+flex-direction: column;
+align-items: center;
+background-color: var(--background-color);
+min-height: 100vh;
+position: relative;
+padding-bottom: 56px;
+box-sizing: border-box;
+color: var(--text-primary);
+}
+
+.container {
+width: 90%;
+max-width: 800px;
+background-color: var(--card-color);
+border-radius: var(--border-radius);
+padding: 20px;
+margin-top: 20px;
+box-shadow: var(--shadow);
+margin-bottom: 76px;
+}
+
+h1 {
+text-align: center;
+margin-bottom: 20px;
+font-weight: 600;
+color: var(--text-primary);
+}
+
+.search-container {
+position: relative;
+margin-bottom: 20px;
+}
+
+.search-bar {
+background-color: rgba(142, 142, 147, 0.12);
+border-radius: 10px;
+padding: 8px 12px;
+display: flex;
+align-items: center;
+transition: all 0.2s;
+}
+
+.search-bar:focus-within {
+background-color: rgba(142, 142, 147, 0.18);
+}
+
+.search-bar input[type="text"] {
+border: none;
+background: transparent;
+width: 100%;
+padding: 6px;
+outline: none;
+flex-grow: 1;
+font-size: 16px;
+color: var(--text-primary);
+}
+
+.search-bar input[type="text"]::placeholder {
+color: var(--text-secondary);
+}
+
+.search-button {
+background: none;
+border: none;
+cursor: pointer;
+display: none;
+padding: 5px;
+color: var(--primary-color);
+}
+
+.suggestions-container {
+position: absolute;
+top: 100%;
+left: 0;
+right: 0;
+background-color: var(--card-color);
+border-radius: 0 0 var(--border-radius) var(--border-radius);
+box-shadow: var(--shadow);
+z-index: 1000;
+max-height: 200px;
+overflow-y: auto;
+display: none;
+border-top: 1px solid rgba(142, 142, 147, 0.1);
+}
+
+.suggestion-item {
+padding: 12px 16px;
+cursor: pointer;
+border-bottom: 1px solid rgba(142, 142, 147, 0.1);
+transition: background-color 0.2s;
+}
+
+.suggestion-item:hover {
+background-color: rgba(142, 142, 147, 0.08);
+}
+
+.suggestion-item .line {
+font-size: 0.8em;
+color: var(--text-secondary);
+margin-top: 4px;
+}
+
+.recent-terms {
+margin-bottom: 20px;
+}
+
+.recent-terms h2 {
+font-size: 1em;
+margin-bottom: 12px;
+color: var(--text-secondary);
+font-weight: 500;
+padding-left: 4px;
+}
+
+.recent-terms ul {
+list-style: none;
+padding: 0;
+display: flex;
+flex-wrap: wrap;
+gap: 8px;
+}
+
+.recent-terms li {
+background-color: rgba(142, 142, 147, 0.12);
+border-radius: 50px;
+padding: 8px 16px;
+cursor: pointer;
+transition: background-color 0.2s;
+font-size: 14px;
+}
+
+.recent-terms li:hover {
+background-color: rgba(142, 142, 147, 0.18);
+}
+
+.grid-container {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 12px;
+margin-bottom: 20px;
+}
+
+.grid-item {
+background-color: var(--card-color);
+border-radius: var(--border-radius);
+padding: 20px;
+text-align: center;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+transition: transform 0.2s, background-color 0.2s;
+box-shadow: var(--shadow);
+}
+
+.grid-item:hover {
+transform: translateY(-2px);
+background-color: rgba(142, 142, 147, 0.05);
+}
+
+.grid-item .material-icons {
+font-size: 32px;
+margin-bottom: 12px;
+color: var(--primary-color);
+background-color: rgba(0, 122, 255, 0.1);
+width: 60px;
+height: 60px;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+.grid-item p {
+margin-bottom: 0;
+font-weight: 500;
+}
+
+.map-section {
+border-radius: var(--border-radius);
+padding: 0;
+text-align: center;
+margin-bottom: 20px;
+position: relative;
+overflow: hidden;
+box-shadow: var(--shadow);
+}
+
+#map {
+height: 400px;
+width: 100%;
+border-radius: var(--border-radius);
+}
+
+#map-full {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.8);
+z-index: 1000;
+display: none;
+border-radius: 0;
+}
+
+#map-full .leaflet-container {
+height: 100%;
+width: 100%;
+}
+
+.bottom-nav {
+background-color: var(--card-color);
+width: 100%;
+display: flex;
+justify-content: space-around;
+padding: 10px 0;
+position: fixed;
+bottom: 0;
+left: 0;
+z-index: 1000;
+box-shadow: 0px -2px 10px rgba(0,0,0,0.05);
+box-sizing: border-box;
+border-top: 1px solid rgba(142, 142, 147, 0.1);
+}
+
+.bottom-nav .material-icons {
+font-size: 28px;
+padding: 8px;
+border-radius: 50%;
+transition: background-color 0.2s;
+color: var(--text-secondary);
+}
+
+.bottom-nav .material-icons.active {
+color: var(--primary-color);
+}
+
+.bottom-nav .material-icons:hover {
+background-color: rgba(142, 142, 147, 0.1);
+}
+
+.close-button {
+position: absolute;
+top: 20px;
+right: 20px;
+color: white;
+font-size: 30px;
+cursor: pointer;
+z-index: 1001;
+display: none;
+background-color: rgba(0, 0, 0, 0.6);
+width: 40px;
+height: 40px;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+#initial-content {
+display: block;
+}
+
+#map-content {
+display: none;
+}
+
+#list-content {
+display: none;
+}
+
+#settings-content {
+display: none;
+}
+
+.list-container {
+padding: 20px;
+border-radius: var(--border-radius);
+background-color: var(--card-color);
+margin-top: 20px;
+box-shadow: var(--shadow);
+}
+
+.list-container h2 {
+margin-bottom: 16px;
+text-align: center;
+font-weight: 600;
+}
+
+.list-container ul {
+list-style: none;
+padding: 0;
+margin-bottom: 20px;
+}
+
+.list-container li {
+padding: 14px 16px;
+border-bottom: 1px solid rgba(142, 142, 147, 0.1);
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.list-container li:hover {
+background-color: rgba(142, 142, 147, 0.08);
+}
+
+.list-container li:last-child {
+border-bottom: none;
+}
+
+.settings-container {
+padding: 20px;
+border-radius: var(--border-radius);
+background-color: var(--card-color);
+margin-top: 20px;
+box-shadow: var(--shadow);
+}
+
+.settings-container h2 {
+margin-bottom: 20px;
+text-align: center;
+font-weight: 600;
+}
+
+.settings-container label {
+display: block;
+margin-bottom: 8px;
+font-weight: 500;
+color: var(--text-primary);
+}
+
+.settings-container input[type="number"] {
+width: 100%;
+padding: 12px;
+border: 1px solid rgba(142, 142, 147, 0.2);
+border-radius: 8px;
+margin-bottom: 16px;
+font-size: 16px;
+background-color: var(--background-color);
+}
+
+.settings-container button {
+background-color: var(--primary-color);
+color: white;
+padding: 12px 20px;
+border: none;
+border-radius: 8px;
+cursor: pointer;
+font-weight: 500;
+font-size: 16px;
+width: 100%;
+transition: opacity 0.2s;
+}
+
+.settings-container button:hover {
+opacity: 0.9;
+}
+
+.history-list {
+margin-top: 20px;
+max-height: 300px;
+overflow-y: auto;
+}
+
+.history-item {
+padding: 12px 16px;
+border-bottom: 1px solid rgba(142, 142, 147, 0.1);
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.history-item:hover {
+background-color: rgba(142, 142, 147, 0.08);
+}
+
+.history-item strong {
+display: block;
+margin-bottom: 4px;
+}
+
+.history-item small {
+color: var(--text-secondary);
+font-size: 0.8em;
+}
+
+#clear-history {
+background-color: transparent;
+color: var(--primary-color);
+border: 1px solid var(--primary-color);
+margin-top: 16px;
+}
+
+#clear-history:hover {
+background-color: rgba(0, 122, 255, 0.1);
+}
+
+.leaflet-routing-container {
+background-color: var(--card-color);
+padding: 10px;
+border-radius: 10px;
+box-shadow: var(--shadow);
+margin-bottom: 20px;
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.leaflet-routing-alternatives-container {
+display: none;
+}
+
+.leaflet-routing-route {
+color: var(--primary-color);
+padding: 5px;
+border-radius: 5px;
+margin-bottom: 5px;
+}
+
+.leaflet-routing-route:hover {
+background-color: rgba(142, 142, 147, 0.08);
+cursor: pointer;
+}
+
+.selected-stop-icon {
+background-color: #FF9500;
+border-radius: 50%;
+width: 20px;
+height: 20px;
+border: 2px solid white;
+}
+
+.user-location-icon {
+background-color: var(--primary-color);
+border-radius: 50%;
+width: 20px;
+height: 20px;
+border: 2px solid white;
+}
+
+.metro-line-1 {
+color: #FF3B30;
+}
+
+.metro-line-2 {
+color: #007AFF;
+}
+
+.metro-line-3 {
+color: #34C759;
+}
+</style>
 </head>
 <body>
-    <div class="container" id="initial-content">
-        <h1>Transportes</h1>
-        <div class="search-container">
-            <div class="search-bar">
-                <input type="text" id="search-input" placeholder="Buscar parada o línea">
-                <button class="search-button" id="search-button">
-                    <span class="material-icons">search</span>
-                </button>
-            </div>
-            <div class="suggestions-container" id="suggestions">
-                <!-- Las sugerencias se insertarán aquí dinámicamente -->
-            </div>
-        </div>
-        <div class="recent-terms">
-            <h2>Términos recientes</h2>
-            <ul id="recent-terms-list">
-                <!-- Términos recientes se cargarán dinámicamente -->
-            </ul>
-        </div>
-        <div class="grid-container">
-            <div class="grid-item" id="map-button">
-                <span class="material-icons">map</span>
-                <p>Mapa</p>
-            </div>
-            <div class="grid-item" id="list-button">
-                <span class="material-icons">list</span>
-                <p>Lista</p>
-            </div>
-            <div class="grid-item" id="settings-button">
-                <span class="material-icons">settings</span>
-                <p>Configuración</p>
-            </div>
-        </div>
-    </div>
+<div class="container" id="initial-content">
+<h1>Transportes</h1>
+<div class="search-container">
+<div class="search-bar">
+<input type="text" id="search-input" placeholder="Buscar parada o línea">
+<button class="search-button" id="search-button">
+<span class="material-icons">search</span>
+</button>
+</div>
+<div class="suggestions-container" id="suggestions">
+</div>
+</div>
+<div class="recent-terms">
+<h2>Términos recientes</h2>
+<ul id="recent-terms-list">
+</ul>
+</div>
+<div class="grid-container">
+<div class="grid-item" id="map-button">
+<span class="material-icons">map</span>
+<p>Mapa</p>
+</div>
+<div class="grid-item" id="list-button">
+<span class="material-icons">list</span>
+<p>Lista</p>
+</div>
+<div class="grid-item" id="settings-button">
+<span class="material-icons">settings</span>
+<p>Configuración</p>
+</div>
+</div>
+</div>
 
-    <div class="container" id="map-content">
-        <div class="map-section">
-            <div id="map"></div>
-            <div id="map-full">
-                <span class="close-button" id="close-map">&times;</span>
-            </div>
-        </div>
-    </div>
+<div class="container" id="map-content">
+<div class="map-section">
+<div id="map"></div>
+<div id="map-full">
+<span class="close-button" id="close-map">&times;</span>
+</div>
+</div>
+</div>
 
-    <div class="container" id="list-content">
-        <div class="list-container">
-            <h2>Paradas del Metro</h2>
-            <div id="metro-list"></div>
-        </div>
-    </div>
+<div class="container" id="list-content">
+<div class="list-container">
+<h2>Paradas del Metro</h2>
+<div id="metro-list"></div>
+</div>
+</div>
 
-    <div class="container" id="settings-content">
-        <div class="settings-container">
-            <h2>Configuración</h2>
-            <label for="latitude">Latitud:</label>
-            <input type="number" id="latitude" placeholder="Ej: 19.0417" value="19.0417">
-            <label for="longitude">Longitud:</label>
-            <input type="number" id="longitude" placeholder="Ej: -98.2000" value="-98.2000">
-            <button id="save-location">Guardar Ubicación</button>
-            
-            <h3 style="margin-top: 20px;">Historial de Rutas</h3>
-            <div class="history-list" id="route-history">
-                <!-- Historial de rutas se insertará aquí -->
-            </div>
-            <button id="clear-history">Limpiar Historial</button>
-        </div>
-    </div>
+<div class="container" id="settings-content">
+<div class="settings-container">
+<h2>Configuración</h2>
+<label for="latitude">Latitud:</label>
+<input type="number" id="latitude" placeholder="Ej: 19.0417" value="19.0417">
+<label for="longitude">Longitud:</label>
+<input type="number" id="longitude" placeholder="Ej: -98.2000" value="-98.2000">
+<button id="save-location">Guardar Ubicación</button>
 
-    <div class="bottom-nav">
-        <span class="material-icons active" id="nav-home">home</span>
-        <span class="material-icons" id="nav-list">list</span>
-        <span class="material-icons" id="nav-map">map</span>
-        <span class="material-icons" id="nav-settings">settings</span>
-    </div>
+<h3 style="margin-top: 20px;">Historial de Rutas</h3>
+<div class="history-list" id="route-history">
+</div>
+<button id="clear-history">Limpiar Historial</button>
+</div>
+</div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.js"></script>
-    <script>
-        // Inicializar el mapa principal
-        var map = L.map('map').setView([19.0417, -98.2000], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+<div class="bottom-nav">
+<span class="material-icons active" id="nav-home">home</span>
+<span class="material-icons" id="nav-list">list</span>
+<span class="material-icons" id="nav-map">map</span>
+<span class="material-icons" id="nav-settings">settings</span>
+</div>
 
-        // Inicializar el mapa en pantalla completa
-        var mapFull = L.map('map-full', {
-            attributionControl: false,
-        }).setView([19.0417, -98.2000], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(mapFull);
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.js"></script>
+<script>
+// Inicializar el mapa principal
+var map = L.map('map').setView([19.0417, -98.2000], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
 
-        var metroRoutes = [
-            {
-                name: "Línea 1",
-                color: "#FF3B30",
-                stops: [
-    { name: "Estación 1-1 - Emiliano Zapata", coordinates: [19.033505, -98.26261] },
-    { name: "Estación 1-2 - Casa de Ángeles", coordinates: [19.03506, -98.258348] },
-    { name: "Estación 1-3 - Carmen Serdán", coordinates: [19.036337, -98.251393] },
-    { name: "Estación 1-4 - Niño Poblano", coordinates: [19.037256, -98.247623] },
-    { name: "Estación 1-5 - Estrellas del Sur", coordinates: [19.039306, -98.241692] },
-    { name: "Estación 1-6 - Las Ánimas", coordinates: [19.045602, -98.234942] },
-    { name: "Estación 1-7 - 25 Poniente", coordinates: [19.048903, -98.232213] },
-    { name: "Estación 1-8 - Matamoros", coordinates: [19.051029, -98.227509] },
-    { name: "Estación 1-9 - Juárez-Serdán", coordinates: [19.056092, -98.221059] },
-    { name: "Estación 1-10 - Hermanos Serdán", coordinates: [19.059436, -98.218207] },
-    { name: "Estación 1-11 - San Alejandro", coordinates: [19.058276, -98.215912] },
-    { name: "Estación 1-12 - Defensores de la República", coordinates: [19.057396, -98.211744] },
-    { name: "Estación 1-13 - 18 Poniente", coordinates: [19.058516, -98.209708] },
-    { name: "Estación 1-14 - Pestalozzi", coordinates: [19.060767, -98.205472] },
-    { name: "Estación 1-15 - Santa Anita", coordinates: [19.062354, -98.201728] },
-    { name: "Estación 1-16 - Constitución", coordinates: [19.063414, -98.197669] },
-    { name: "Estación 1-17 - El Rayito", coordinates: [19.064257, -98.194665] },
-    { name: "Estación 1-18 - China Poblana", coordinates: [19.064802, -98.19231] },
-    { name: "Estación 1-19 - Los Lavaderos", coordinates: [19.065086, -98.188159] },
-    { name: "Estación 1-20 - Puente Zaragoza", coordinates: [19.064823, -98.183021] },
-    { name: "Estación 1-21 - Ignacio Zaragoza", coordinates: [19.064405, -98.179088] },
-    { name: "Estación 1-22 - Los Fuertes", coordinates: [19.064014, -98.175664] },
-    { name: "Estación 1-23 - Tecnológico", coordinates: [19.06353, -98.171921] },
-    { name: "Estación 1-24 - La Ciénega", coordinates: [19.062885, -98.168307] },
-    { name: "Estación 1-25 - La Rosa", coordinates: [19.062441, -98.163842] },
-    { name: "Estación 1-26 - 18 de Noviembre", coordinates: [19.06186, -98.159439] },
-    { name: "Estación 1-27 - La Resurrección", coordinates: [19.061196, -98.155177] },
-    { name: "Estación 1-28 - Universidad Tecnológica", coordinates: [19.060129, -98.149167] },
-    { name: "Estación 1-29 - Rivera Anaya", coordinates: [19.058609, -98.144746] },
-    { name: "Estación 1-30 - Amalucan", coordinates: [19.056677, -98.139284] },
-    { name: "Estación 1-31 - Bosques", coordinates: [19.056151, -98.13633] },
-    { name: "Estación 1-32 - Galaxia", coordinates: [19.055269, -98.132237] },
-    { name: "Estación 1-33 - El Pilar", coordinates: [19.054752, -98.127842] },
-    { name: "Estación 1-34 - Mixatlac", coordinates: [19.054284, -98.123817] },
-    { name: "Estación 1-35 - Santa Mago", coordinates: [19.053955, -98.119824] },
-    { name: "Estación 1-36 - Chachapa", coordinates: [19.054104, -98.114623] },
-    { name: "Estación 1-37 - Terminal Chachapa", coordinates: [19.054604, -98.11243] }
+// Inicializar el mapa en pantalla completa
+var mapFull = L.map('map-full', {
+attributionControl: false,
+}).setView([19.0417, -98.2000], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(mapFull);
+
+var metroRoutes = [
+{
+name: "Línea 1",
+color: "#FF3B30",
+stops: [
+{ name: "Estación 1-1 - Centro", coordinates: [19.0500, -98.2100] },
+{ name: "Estación 1-2 - Universidad", coordinates: [19.0450, -98.2050] },
+{ name: "Estación 1-3 - Mercado", coordinates: [19.0400, -98.2000] },
+{ name: "Estación 1-4 - Parque", coordinates: [19.0350, -98.1950] },
+{ name: "Estación 1-5 - Terminal", coordinates: [19.0300, -98.1900] }
 ]
-
-            },
-            {
-                name: "Línea 2",
-                color: "#007AFF",
-                stops: [
-    { name: "Estación 2-1 - Terminal Margaritas", coordinates: [18.96981, -98.265373] },
-    { name: "Estación 2-2 - Limones", coordinates: [18.964806, -98.267899] },
-    { name: "Estación 2-3 - Tabachines", coordinates: [18.972988, -98.261345] },
-    { name: "Estación 2-4 - Azaleas", coordinates: [18.975225, -98.25853] },
-    { name: "Estación 2-5 - Pino Suárez", coordinates: [18.977932, -98.255768] },
-    { name: "Estación 2-6 - Independencia", coordinates: [18.980764, -98.253571] },
-    { name: "Estación 2-7 - Olivos", coordinates: [18.984348, -98.250908] },
-    { name: "Estación 2-8 - C. C. Centro Sur", coordinates: [18.98851, -98.247749] },
-    { name: "Estación 2-9 - Periférico", coordinates: [18.990587, -98.24614] },
-    { name: "Estación 2-10 - San Bartolo", coordinates: [18.994415, -98.243233] },
-    { name: "Estación 2-11 - Yucatán", coordinates: [18.997578, -98.240814] },
-    { name: "Estación 2-12 - Tarascos", coordinates: [19.003727, -98.238724] },
-    { name: "Estación 2-13 - Torrecillas", coordinates: [19.005829, -98.237831] },
-    { name: "Estación 2-14 - Tecamachalco", coordinates: [19.010363, -98.23513] },
-    { name: "Estación 2-15 - Club de Golf", coordinates: [19.013206, -98.233284] },
-    { name: "Estación 2-16 - Cúmulo de Virgo", coordinates: [19.015606, -98.231735] },
-    { name: "Estación 2-17 - IMSS", coordinates: [19.018902, -98.228844] },
-    { name: "Estación 2-18 - Zaragoza", coordinates: [19.020306, -98.227951] },
-    { name: "Estación 2-19 - Río Atoyac", coordinates: [19.022203, -98.225586] },
-    { name: "Estación 2-20 - Niño Poblano", coordinates: [19.02536, -98.22242] },
-    { name: "Estación 2-21 - Juan Pablo II", coordinates: [19.028063, -98.219833] },
-    { name: "Estación 2-22 - Alpha", coordinates: [19.030396, -98.217545] },
-    { name: "Estación 2-23 - Panteones", coordinates: [19.03434, -98.214767] },
-    { name: "Estación 2-24 - Espinosa Yglesias", coordinates: [19.036167, -98.213394] },
-    { name: "Estación 2-25 - Revolución", coordinates: [19.038601, -98.211784] },
-    { name: "Estación 2-26 - Santiago", coordinates: [19.041145, -98.210403] },
-    { name: "Estación 2-27 - Héroes de la Reforma", coordinates: [19.044199, -98.208717] },
-    { name: "Estación 2-28 - Paseo Bravo", coordinates: [19.046801, -98.207222] },
-    { name: "Estación 2-29 - Mercado de Sabores", coordinates: [19.050379, -98.205093] },
-    { name: "Estación 2-30 - Museo del Ferrocarril", coordinates: [19.054834, -98.202507] },
-    { name: "Estación 2-31 - Nacozari", coordinates: [19.057179, -98.198789] },
-    { name: "Estación 2-32 - Esperanza", coordinates: [19.059357, -98.199654] },
-    { name: "Estación 2-33 - Diagonal Ote.", coordinates: [19.063871, -98.19516] },
-    { name: "Estación 2-34 - Diagonal Pte.", coordinates: [19.062832, -98.197655] }
+},
+{
+name: "Línea 2",
+color: "#007AFF",
+stops: [
+{ name: "Estación 2-1 - Norte", coordinates: [19.0600, -98.2200] },
+{ name: "Estación 2-2 - Hospital", coordinates: [19.0550, -98.2150] },
+{ name: "Estación 2-3 - Centro", coordinates: [19.0500, -98.2100] },
+{ name: "Estación 2-4 - Escuela", coordinates: [19.0450, -98.2050] },
+{ name: "Estación 2-5 - Sur", coordinates: [19.0400, -98.2000] }
 ]
-
-            },
-            {
-                name: "Línea 3",
-                color: "#34C759",
-                stops: [
-    { name: "Estación 3-1 - Terminal Valsequillo", coordinates: [18.973044, -98.19266] },
-    { name: "Estación 3-2 - 01 La Fragua", coordinates: [18.978449, -98.196221] },
-    { name: "Estación 3-3 - 02 Arboledas", coordinates: [18.983595, -98.198652] },
-    { name: "Estación 3-4 - 03 Xilotzingo", coordinates: [18.98892, -98.200526] },
-    { name: "Estación 3-5 - 04 Las Torres", coordinates: [18.993327, -98.20211] },
-    { name: "Estación 3-6 - 05 Biblioteca Central", coordinates: [18.995927, -98.203044] },
-    { name: "Estación 3-7 - 06 C.U. BUAP", coordinates: [19.000307, -98.204612] },
-    { name: "Estación 3-8 - 07 Margaritas", coordinates: [19.009543, -98.207841] },
-    { name: "Estación 3-9 - 08 San Baltazar", coordinates: [19.01214, -98.208749] },
-    { name: "Estación 3-10 - 09 Bomberos", coordinates: [19.016582, -98.210344] },
-    { name: "Estación 3-11 - 10 Cristal", coordinates: [19.022133, -98.212285] },
-    { name: "Estación 3-12a - 12a C.C. Camacho Espíritu", coordinates: [19.025845, -98.213079] },
-    { name: "Estación 3-12b - 12b C.C. Camacho Espíritu", coordinates: [19.025337, -98.213424] },
-    { name: "Estación 3-13 - 13 16 de Septiembre", coordinates: [19.02619, -98.209854] },
-    { name: "Estación 3-14 - 14 Parque Juárez", coordinates: [19.027366, -98.204792] },
-    { name: "Estación 3-15a - 15a Fiscalía", coordinates: [19.031477, -98.200763] },
-    { name: "Estación 3-15b - 15b Fiscalía", coordinates: [19.031321, -98.200999] },
-    { name: "Estación 3-16a - 16a Niños Héroes", coordinates: [19.033155, -98.199169] },
-    { name: "Estación 3-16b - 16b Niños Héroes", coordinates: [19.034255, -98.198949] },
-    { name: "Estación 3-17 - 17 Clínica 2", coordinates: [19.038693, -98.196118] },
-    { name: "Estación 3-18a - 18a Analco", coordinates: [19.040273, -98.194268] },
-    { name: "Estación 3-18b - 18b Analco", coordinates: [19.040966, -98.193507] },
-    { name: "Estación 3-19 - 19 San Francisco", coordinates: [19.045195, -98.191166] },
-    { name: "Estación 3-20 - 20 Tunel 5 de mayo", coordinates: [19.049949, -98.189473] },
-    { name: "Estación 3-21 - 21 San Antonio", coordinates: [19.056176, -98.192959] },
-    { name: "Estación 3-22 - 22 Santa María", coordinates: [19.06043, -98.192304] },
-    { name: "Estación 3-23 - 23 China Poblana", coordinates: [19.063939, -98.191502] },
-    { name: "Estación 3-24 - 24 Guadalupe Victoria", coordinates: [19.068157, -98.191956] },
-    { name: "Estación 3-25 - 25 Unión", coordinates: [19.071462, -98.192877] },
-    { name: "Estación 3-26 - 26 Hidalgo", coordinates: [19.073178, -98.196303] },
-    { name: "Estación 3-27 - 27 Boulevard Norte", coordinates: [19.073859, -98.198964] },
-    { name: "Estación 3-28 - Terminal CAPU", coordinates: [19.07508, -98.203699] }
+},
+{
+name: "Línea 3",
+color: "#34C759",
+stops: [
+{ name: "Estación 3-1 - Este", coordinates: [19.0700, -98.2300] },
+{ name: "Estación 3-2 - Estadio", coordinates: [19.0650, -98.2250] },
+{ name: "Estación 3-3 - Centro Comercial", coordinates: [19.0600, -98.2200] },
+{ name: "Estación 3-4 - Oficinas", coordinates: [19.0550, -98.2150] },
+{ name: "Estación 3-5 - Oeste", coordinates: [19.0500, -98.2100] }
 ]
+}
+];
 
-            }
-        ];
+// Variables globales
+let userLocationMarker;
+let selectedStopMarker = null;
+let routingControl = null;
+let mapFullRoutingControl = null;
+let mapCenter = [19.0417, -98.2000];
+let currentLocation = [19.0417, -98.2000];
+let routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
+let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || ["Centro", "Línea 1", "Estación 2-3"];
+let metroMarkers = [];
+let metroLines = [];
 
-        // Variables globales
-        let userLocationMarker;
-        let selectedStopMarker = null;
-        let routingControl = null;
-        let mapFullRoutingControl = null;
-        let mapCenter = [19.0417, -98.2000];
-        let currentLocation = [19.0417, -98.2000];
-        let routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
-        let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || ["Centro", "Línea 1", "Estación 2-3"];
-        let metroMarkers = [];
-        let metroLines = [];
+// Elementos del DOM
+const searchInput = document.getElementById('search-input');
+const searchButton = document.getElementById('search-button');
+const suggestionsContainer = document.getElementById('suggestions');
+const mapButton = document.getElementById('map-button');
+const mapFullContainer = document.getElementById('map-full');
+const closeMapButton = document.getElementById('close-map');
+const initialContent = document.getElementById('initial-content');
+const mapContent = document.getElementById('map-content');
+const listContent = document.getElementById('list-content');
+const settingsContent = document.getElementById('settings-content');
+const bottomNav = document.querySelector('.bottom-nav');
+const listButton = document.getElementById('list-button');
+const metroListContainer = document.getElementById('metro-list');
+const settingsButton = document.getElementById('settings-button');
+const saveLocationButton = document.getElementById('save-location');
+const latitudeInput = document.getElementById('latitude');
+const longitudeInput = document.getElementById('longitude');
+const recentTermsList = document.getElementById('recent-terms-list');
+const routeHistoryContainer = document.getElementById('route-history');
+const clearHistoryButton = document.getElementById('clear-history');
+const navHome = document.getElementById('nav-home');
+const navList = document.getElementById('nav-list');
+const navMap = document.getElementById('nav-map');
+const navSettings = document.getElementById('nav-settings');
 
-        // Elementos del DOM
-        const searchInput = document.getElementById('search-input');
-        const searchButton = document.getElementById('search-button');
-        const suggestionsContainer = document.getElementById('suggestions');
-        const mapButton = document.getElementById('map-button');
-        const mapFullContainer = document.getElementById('map-full');
-        const closeMapButton = document.getElementById('close-map');
-        const initialContent = document.getElementById('initial-content');
-        const mapContent = document.getElementById('map-content');
-        const listContent = document.getElementById('list-content');
-        const settingsContent = document.getElementById('settings-content');
-        const bottomNav = document.querySelector('.bottom-nav');
-        const listButton = document.getElementById('list-button');
-        const metroListContainer = document.getElementById('metro-list');
-        const settingsButton = document.getElementById('settings-button');
-        const saveLocationButton = document.getElementById('save-location');
-        const latitudeInput = document.getElementById('latitude');
-        const longitudeInput = document.getElementById('longitude');
-        const recentTermsList = document.getElementById('recent-terms-list');
-        const routeHistoryContainer = document.getElementById('route-history');
-        const clearHistoryButton = document.getElementById('clear-history');
-        const navHome = document.getElementById('nav-home');
-        const navList = document.getElementById('nav-list');
-        const navMap = document.getElementById('nav-map');
-        const navSettings = document.getElementById('nav-settings');
+// Inicialización
+function initialize() {
+drawMetroRoutes(map);
+drawMetroRoutes(mapFull);
+updateUserLocation(mapCenter[0], mapCenter[1]);
+updateRouteHistoryDisplay();
+updateRecentSearchesDisplay();
+setupEventListeners();
+loadMetroList();
+}
 
-        // Inicialización
-        function initialize() {
-            drawMetroRoutes(map);
-            drawMetroRoutes(mapFull);
-            updateUserLocation(mapCenter[0], mapCenter[1]);
-            updateRouteHistoryDisplay();
-            updateRecentSearchesDisplay();
-            setupEventListeners();
-            loadMetroList();
-        }
+function drawMetroRoutes(mapToDraw) {
+// Limpiar marcadores y líneas existentes
+clearMetroRoutes(mapToDraw);
 
-        function drawMetroRoutes(mapToDraw) {
-            // Limpiar marcadores y líneas existentes
-            clearMetroRoutes(mapToDraw);
-            
-            // Dibujar solo las paradas cercanas (dentro de 2km)
-            const nearbyStops = getNearbyStops(currentLocation, 2000); // 2000 metros = 2km
-            
-            metroRoutes.forEach(route => {
-                // Filtrar solo las paradas cercanas para esta línea
-                const routeStops = route.stops.filter(stop => 
-                    nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
-                );
-                
-                if (routeStops.length > 0) {
-                    // Dibujar la línea solo si tiene paradas cercanas
-                    const line = L.polyline(routeStops.map(stop => stop.coordinates), {
-                        color: route.color,
-                        weight: 5,
-                        opacity: 0.7
-                    }).addTo(mapToDraw);
-                    
-                    metroLines.push({map: mapToDraw, line: line});
-                    
-                    // Dibujar marcadores para las paradas cercanas
-                    routeStops.forEach(stop => {
-                        const marker = L.marker(stop.coordinates)
-                            .bindPopup(`<b>${route.name} - ${stop.name}</b>`)
-                            .addTo(mapToDraw);
-                            
-                        metroMarkers.push({map: mapToDraw, marker: marker});
-                        
-                        marker.on('click', function(e) {
-                            showStopDetails(stop, route);
-                        });
-                    });
-                }
-            });
-        }
+// Dibujar solo las paradas cercanas (dentro de 2km)
+const nearbyStops = getNearbyStops(currentLocation, 2000); // 2000 metros = 2km
 
-        function clearMetroRoutes(mapToDraw) {
-            // Eliminar marcadores específicos de este mapa
-            metroMarkers
-                .filter(m => m.map === mapToDraw)
-                .forEach(m => {
-                    m.map.removeLayer(m.marker);
-                });
-            metroMarkers = metroMarkers.filter(m => m.map !== mapToDraw);
-            
-            // Eliminar líneas específicas de este mapa
-            metroLines
-                .filter(l => l.map === mapToDraw)
-                .forEach(l => {
-                    l.map.removeLayer(l.line);
-                });
-            metroLines = metroLines.filter(l => l.map !== mapToDraw);
-        }
+metroRoutes.forEach(route => {
+// Filtrar solo las paradas cercanas para esta línea
+const routeStops = route.stops.filter(stop =>
+nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
+);
 
-        function getNearbyStops(location, maxDistance) {
-            const nearbyStops = [];
-            
-            metroRoutes.forEach(route => {
-                route.stops.forEach(stop => {
-                    const distance = L.latLng(location).distanceTo(L.latLng(stop.coordinates));
-                    if (distance <= maxDistance) {
-                        nearbyStops.push({
-                            name: stop.name,
-                            line: route.name,
-                            coordinates: stop.coordinates,
-                            distance: distance
-                        });
-                    }
-                });
-            });
-            
-            // Ordenar por distancia (más cercanas primero)
-            nearbyStops.sort((a, b) => a.distance - b.distance);
-            
-            return nearbyStops;
-        }
+if (routeStops.length > 0) {
+// Dibujar la línea solo si tiene paradas cercanas
+const line = L.polyline(routeStops.map(stop => stop.coordinates), {
+color: route.color,
+weight: 5,
+opacity: 0.7
+}).addTo(mapToDraw);
 
-        function updateUserLocation(lat, lng) {
-            currentLocation = [lat, lng];
-            mapCenter = [lat, lng];
-            map.setView(mapCenter, 13);
-            mapFull.setView(mapCenter, 13);
-            
-            if (userLocationMarker) {
-                map.removeLayer(userLocationMarker);
-                mapFull.removeLayer(userLocationMarker);
-            }
-            
-            const userIcon = L.divIcon({
-                className: 'user-location-icon',
-                html: '<div style="background-color: #007AFF; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
-                iconSize: [24, 24]
-            });
-            
-            userLocationMarker = L.marker(currentLocation, {icon: userIcon})
-                .bindPopup("<b>Tu ubicación</b>")
-                .addTo(map);
-                
-            L.marker(currentLocation, {icon: userIcon})
-                .bindPopup("<b>Tu ubicación</b>")
-                .addTo(mapFull);
-            
-            // Actualizar rutas mostradas basadas en la nueva ubicación
-            drawMetroRoutes(map);
-            drawMetroRoutes(mapFull);
-        }
+metroLines.push({map: mapToDraw, line: line});
 
-        function searchStops(query) {
-            if (!query) return [];
-            
-            const results = [];
-            const lowerQuery = query.toLowerCase();
-            
-            // Buscar solo en paradas cercanas (dentro de 2km)
-            const nearbyStops = getNearbyStops(currentLocation, 2000);
-            
-            nearbyStops.forEach(stop => {
-                if (stop.name.toLowerCase().includes(lowerQuery)) {
-                    const route = metroRoutes.find(r => r.name === stop.line);
-                    if (route) {
-                        const routeStop = route.stops.find(s => s.name === stop.name);
-                        if (routeStop) {
-                            results.push({
-                                name: stop.name,
-                                line: route.name,
-                                coordinates: stop.coordinates,
-                                stopData: routeStop,
-                                routeData: route
-                            });
-                        }
-                    }
-                }
-            });
-            
-            // También buscar por nombre de línea
-            metroRoutes.forEach(route => {
-                if (route.name.toLowerCase().includes(lowerQuery)) {
-                    route.stops.forEach(stop => {
-                        if (nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)) {
-                            results.push({
-                                name: stop.name,
-                                line: route.name,
-                                coordinates: stop.coordinates,
-                                stopData: stop,
-                                routeData: route
-                            });
-                        }
-                    });
-                }
-            });
-            
-            // Eliminar duplicados
-            const uniqueResults = results.filter((result, index, self) =>
-                index === self.findIndex((t) => (
-                    t.name === result.name && t.line === result.line
-                ))
-            );
-            
-            // Ordenar por distancia
-            uniqueResults.sort((a, b) => {
-                const aDistance = L.latLng(currentLocation).distanceTo(L.latLng(a.coordinates));
-                const bDistance = L.latLng(currentLocation).distanceTo(L.latLng(b.coordinates));
-                return aDistance - bDistance;
-            });
-            
-            return uniqueResults;
-        }
+// Dibujar marcadores para las paradas cercanas
+routeStops.forEach(stop => {
+const marker = L.marker(stop.coordinates)
+.bindPopup(`<b>${route.name} - ${stop.name}</b>`)
+.addTo(mapToDraw);
 
-        function clearExistingRoutes() {
-            if (routingControl) {
-                map.removeControl(routingControl);
-                routingControl = null;
-            }
-            if (mapFullRoutingControl) {
-                mapFull.removeControl(mapFullRoutingControl);
-                mapFullRoutingControl = null;
-            }
-        }
+metroMarkers.push({map: mapToDraw, marker: marker});
 
-        function showRouteToStop(stopCoordinates, stopName, lineName) {
-            clearExistingRoutes();
-            
-            // Ocultar todas las paradas y líneas excepto la seleccionada
-            clearMetroRoutes(map);
-            clearMetroRoutes(mapFull);
-            
-            // Guardar en el historial
-            const routeInfo = {
-                from: currentLocation,
-                to: stopCoordinates,
-                stopName: stopName,
-                lineName: lineName,
-                date: new Date().toLocaleString()
-            };
-            
-            // Evitar duplicados
-            const isDuplicate = routeHistory.some(item => 
-                item.stopName === stopName && 
-                item.lineName === lineName &&
-                item.date === routeInfo.date
-            );
-            
-            if (!isDuplicate) {
-                routeHistory.unshift(routeInfo);
-                if (routeHistory.length > 10) {
-                    routeHistory.pop();
-                }
-                localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
-                updateRouteHistoryDisplay();
-            }
-            
-            // Guardar en búsquedas recientes
-            const searchTerm = `${stopName} (${lineName})`;
-            if (!recentSearches.includes(searchTerm)) {
-                recentSearches.unshift(searchTerm);
-                if (recentSearches.length > 5) {
-                    recentSearches.pop();
-                }
-                localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
-                updateRecentSearchesDisplay();
-            }
-            
-            // Crear la ruta en el mapa principal
-            routingControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(currentLocation),
-                    L.latLng(stopCoordinates)
-                ],
-                routeWhileDragging: false,
-                showAlternatives: false,
-                addWaypoints: false,
-                lineOptions: {
-                    styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
-                },
-                createMarker: function() { return null; }
-            }).addTo(map);
-            
-            // Crear la ruta en el mapa de pantalla completa
-            mapFullRoutingControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(currentLocation),
-                    L.latLng(stopCoordinates)
-                ],
-                routeWhileDragging: false,
-                showAlternatives: false,
-                addWaypoints: false,
-                lineOptions: {
-                    styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
-                },
-                createMarker: function() { return null; }
-            }).addTo(mapFull);
-            
-            // Mostrar información de la ruta
-            routingControl.on('routesfound', function(e) {
-                const routes = e.routes;
-                const summary = routes[0].summary;
-                
-                const routeInfo = document.createElement('div');
-                routeInfo.innerHTML = `
-                    <b>Ruta a ${stopName}</b><br>
-                    Línea: ${lineName}<br>
-                    Distancia: ${(summary.totalDistance / 1000).toFixed(2)} km<br>
-                    Tiempo estimado: ${Math.round(summary.totalTime / 60)} minutos
-                `;
-                
-                userLocationMarker.bindPopup(routeInfo).openPopup();
-            });
-        }
+marker.on('click', function(e) {
+showStopDetails(stop, route);
+});
+});
+}
+});
+}
 
-        function selectStop(suggestion) {
-            searchInput.value = suggestion.name;
-            suggestionsContainer.style.display = 'none';
-            searchButton.style.display = 'none';
-            
-            // Cambiar a la vista del mapa
-            showMapView();
-            
-            // Centrar el mapa en la parada seleccionada
-            map.setView(suggestion.coordinates, 15);
-            mapFull.setView(suggestion.coordinates, 15);
-            
-            // Actualizar marcador de parada seleccionada
-            updateSelectedStopMarker(suggestion.coordinates, suggestion.name, suggestion.line);
-            
-            // Mostrar la ruta
-            showRouteToStop(suggestion.coordinates, suggestion.name, suggestion.line);
-        }
+function clearMetroRoutes(mapToDraw) {
+// Eliminar marcadores específicos de este mapa
+metroMarkers
+.filter(m => m.map === mapToDraw)
+.forEach(m => {
+m.map.removeLayer(m.marker);
+});
+metroMarkers = metroMarkers.filter(m => m.map !== mapToDraw);
 
-        function updateSelectedStopMarker(coordinates, name, line) {
-            if (selectedStopMarker) {
-                map.removeLayer(selectedStopMarker);
-                mapFull.removeLayer(selectedStopMarker);
-            }
-            
-            const stopIcon = L.divIcon({
-                className: 'selected-stop-icon',
-                html: '<div style="background-color: #FF9500; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
-                iconSize: [24, 24]
-            });
-            
-            selectedStopMarker = L.marker(coordinates, {icon: stopIcon})
-                .bindPopup(`<b>${line}</b><br>${name}`)
-                .addTo(map);
-                
-            L.marker(coordinates, {icon: stopIcon})
-                .bindPopup(`<b>${line}</b><br>${name}`)
-                .addTo(mapFull);
-        }
+// Eliminar líneas específicas de este mapa
+metroLines
+.filter(l => l.map === mapToDraw)
+.forEach(l => {
+l.map.removeLayer(l.line);
+});
+metroLines = metroLines.filter(l => l.map !== mapToDraw);
+}
 
-        function showStopDetails(stop, route) {
-            // Cambiar a la vista del mapa
-            showMapView();
-            
-            // Centrar el mapa en la parada seleccionada
-            map.setView(stop.coordinates, 15);
-            mapFull.setView(stop.coordinates, 15);
-            
-            // Actualizar marcador de parada seleccionada
-            updateSelectedStopMarker(stop.coordinates, stop.name, route.name);
-            
-            // Mostrar la ruta
-            showRouteToStop(stop.coordinates, stop.name, route.name);
-        }
+function getNearbyStops(location, maxDistance) {
+const nearbyStops = [];
 
-        function showMapView() {
-            initialContent.style.display = 'none';
-            mapContent.style.display = 'block';
-            listContent.style.display = 'none';
-            settingsContent.style.display = 'none';
-            mapFullContainer.style.display = 'block';
-            closeMapButton.style.display = 'block';
-            bottomNav.style.display = 'flex';
-            mapFull.invalidateSize();
-            
-            // Actualizar navegación
-            updateNavigation('map');
-        }
+metroRoutes.forEach(route => {
+route.stops.forEach(stop => {
+const distance = L.latLng(location).distanceTo(L.latLng(stop.coordinates));
+if (distance <= maxDistance) {
+nearbyStops.push({
+name: stop.name,
+line: route.name,
+coordinates: stop.coordinates,
+distance: distance
+});
+}
+});
+});
 
-        function showSuggestions(query) {
-            const suggestions = searchStops(query);
-            suggestionsContainer.innerHTML = '';
-            
-            if (suggestions.length === 0) {
-                suggestionsContainer.style.display = 'none';
-                return;
-            }
-            
-            suggestions.forEach(suggestion => {
-                const item = document.createElement('div');
-                item.className = 'suggestion-item';
-                item.innerHTML = `
-                    <div>${suggestion.name}</div>
-                    <div class="line">${suggestion.line}</div>
-                `;
-                
-                item.addEventListener('click', () => {
-                    selectStop(suggestion);
-                });
-                
-                suggestionsContainer.appendChild(item);
-            });
-            
-            suggestionsContainer.style.display = 'block';
-        }
+// Ordenar por distancia (más cercanas primero)
+nearbyStops.sort((a, b) => a.distance - b.distance);
 
-        function loadMetroList() {
-            metroListContainer.innerHTML = '';
-            
-            // Mostrar solo paradas cercanas (dentro de 2km)
-            const nearbyStops = getNearbyStops(currentLocation, 2000);
-            
-            metroRoutes.forEach(route => {
-                // Filtrar solo las paradas cercanas para esta línea
-                const routeStops = route.stops.filter(stop => 
-                    nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
-                );
-                
-                if (routeStops.length > 0) {
-                    const routeList = document.createElement('ul');
-                    routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
-                    
-                    routeStops.forEach(stop => {
-                        const stopItem = document.createElement('li');
-                        stopItem.innerHTML = `
-                            <div>${stop.name}</div>
-                            <small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>
-                        `;
-                        
-                        stopItem.addEventListener('click', () => {
-                            showStopDetails(stop, route);
-                        });
-                        
-                        routeList.appendChild(stopItem);
-                    });
-                    
-                    metroListContainer.appendChild(routeList);
-                }
-            });
-        }
+return nearbyStops;
+}
 
-        function updateRouteHistoryDisplay() {
-            routeHistoryContainer.innerHTML = '';
-            
-            if (routeHistory.length === 0) {
-                routeHistoryContainer.innerHTML = '<p>No hay rutas en el historial</p>';
-                return;
-            }
-            
-            routeHistory.forEach((route, index) => {
-                const item = document.createElement('div');
-                item.className = 'history-item';
-                item.innerHTML = `
-                    <div><strong>${route.stopName}</strong></div>
-                    <div>Línea: ${route.lineName}</div>
-                    <small>${route.date}</small>
-                `;
-                
-                item.addEventListener('click', () => {
-                    showMapView();
-                    
-                    // Centrar el mapa en la parada seleccionada
-                    map.setView(route.to, 15);
-                    mapFull.setView(route.to, 15);
-                    
-                    // Actualizar ubicación actual
-                    currentLocation = route.from;
-                    updateUserLocation(route.from[0], route.from[1]);
-                    
-                    // Actualizar marcador de parada seleccionada
-                    updateSelectedStopMarker(route.to, route.stopName, route.lineName);
-                    
-                    // Mostrar la ruta
-                    showRouteToStop(route.to, route.stopName, route.lineName);
-                });
-                
-                routeHistoryContainer.appendChild(item);
-            });
-        }
+function updateUserLocation(lat, lng) {
+currentLocation = [lat, lng];
+mapCenter = [lat, lng];
+map.setView(mapCenter, 13);
+mapFull.setView(mapCenter, 13);
 
-        function updateRecentSearchesDisplay() {
-            recentTermsList.innerHTML = '';
-            
-            if (recentSearches.length === 0) {
-                recentTermsList.innerHTML = '<li>No hay búsquedas recientes</li>';
-                return;
-            }
-            
-            recentSearches.forEach(term => {
-                const item = document.createElement('li');
-                item.textContent = term;
-                
-                item.addEventListener('click', () => {
-                    // Buscar directamente el término
-                    const suggestions = searchStops(term);
-                    if (suggestions.length > 0) {
-                        selectStop(suggestions[0]);
-                    } else {
-                        alert('No se encontraron resultados para: ' + term);
-                    }
-                });
-                
-                recentTermsList.appendChild(item);
-            });
-        }
+if (userLocationMarker) {
+map.removeLayer(userLocationMarker);
+mapFull.removeLayer(userLocationMarker);
+}
 
-        function updateNavigation(activeView) {
-            // Reset all icons
-            navHome.classList.remove('active');
-            navList.classList.remove('active');
-            navMap.classList.remove('active');
-            navSettings.classList.remove('active');
-            
-            // Set active icon
-            switch(activeView) {
-                case 'home':
-                    navHome.classList.add('active');
-                    break;
-                case 'list':
-                    navList.classList.add('active');
-                    break;
-                case 'map':
-                    navMap.classList.add('active');
-                    break;
-                case 'settings':
-                    navSettings.classList.add('active');
-                    break;
-            }
-        }
+const userIcon = L.divIcon({
+className: 'user-location-icon',
+html: '<div style="background-color: #007AFF; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
+iconSize: [24, 24]
+});
 
-        function setupEventListeners() {
-            // Buscador
-            searchInput.addEventListener('input', (e) => {
-                if (e.target.value.trim() !== '') {
-                    searchButton.style.display = 'block';
-                    showSuggestions(e.target.value);
-                } else {
-                    searchButton.style.display = 'none';
-                    suggestionsContainer.style.display = 'none';
-                }
-            });
+userLocationMarker = L.marker(currentLocation, {icon: userIcon})
+.bindPopup("<b>Tu ubicación</b>")
+.addTo(map);
 
-            searchInput.addEventListener('focus', () => {
-                if (searchInput.value) {
-                    showSuggestions(searchInput.value);
-                }
-            });
+L.marker(currentLocation, {icon: userIcon})
+.bindPopup("<b>Tu ubicación</b>")
+.addTo(mapFull);
 
-            searchButton.addEventListener('click', () => {
-                const query = searchInput.value.trim();
-                if (query !== '') {
-                    const suggestions = searchStops(query);
-                    if (suggestions.length > 0) {
-                        selectStop(suggestions[0]);
-                    } else {
-                        alert('No se encontraron resultados para: ' + query);
-                    }
-                }
-            });
+// Actualizar rutas mostradas basadas en la nueva ubicación
+drawMetroRoutes(map);
+drawMetroRoutes(mapFull);
+}
 
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    searchButton.click();
-                }
-            });
+function searchStops(query) {
+if (!query) return [];
 
-            document.addEventListener('click', (e) => {
-                if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-                    suggestionsContainer.style.display = 'none';
-                }
-            });
+const results = [];
+const lowerQuery = query.toLowerCase();
 
-            // Navegación
-            mapButton.addEventListener('click', () => {
-                showMapView();
-            });
+// Buscar solo en paradas cercanas (dentro de 2km)
+const nearbyStops = getNearbyStops(currentLocation, 2000);
 
-            closeMapButton.addEventListener('click', () => {
-                mapFullContainer.style.display = 'none';
-                closeMapButton.style.display = 'none';
-                mapContent.style.display = 'none';
-                initialContent.style.display = 'block';
-                listContent.style.display = 'none';
-                settingsContent.style.display = 'none';
-                bottomNav.style.display = 'flex';
-                updateNavigation('home');
-                
-                // Restaurar la visualización de rutas cercanas
-                drawMetroRoutes(map);
-                drawMetroRoutes(mapFull);
-            });
+nearbyStops.forEach(stop => {
+if (stop.name.toLowerCase().includes(lowerQuery)) {
+const route = metroRoutes.find(r => r.name === stop.line);
+if (route) {
+const routeStop = route.stops.find(s => s.name === stop.name);
+if (routeStop) {
+results.push({
+name: stop.name,
+line: route.name,
+coordinates: stop.coordinates,
+stopData: routeStop,
+routeData: route
+});
+}
+}
+}
+});
 
-            navHome.addEventListener('click', () => {
-                initialContent.style.display = 'block';
-                mapContent.style.display = 'none';
-                listContent.style.display = 'none';
-                settingsContent.style.display = 'none';
-                mapFullContainer.style.display = 'none';
-                closeMapButton.style.display = 'none';
-                bottomNav.style.display = 'flex';
-                updateNavigation('home');
-                
-                // Restaurar la visualización de rutas cercanas
-                drawMetroRoutes(map);
-                drawMetroRoutes(mapFull);
-            });
+// También buscar por nombre de línea
+metroRoutes.forEach(route => {
+if (route.name.toLowerCase().includes(lowerQuery)) {
+route.stops.forEach(stop => {
+if (nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)) {
+results.push({
+name: stop.name,
+line: route.name,
+coordinates: stop.coordinates,
+stopData: stop,
+routeData: route
+});
+}
+});
+}
+});
 
-            listButton.addEventListener('click', () => {
-                initialContent.style.display = 'none';
-                mapContent.style.display = 'none';
-                listContent.style.display = 'block';
-                settingsContent.style.display = 'none';
-                bottomNav.style.display = 'flex';
-                updateNavigation('list');
-            });
+// Eliminar duplicados
+const uniqueResults = results.filter((result, index, self) =>
+index === self.findIndex((t) => (
+t.name === result.name && t.line === result.line
+))
+);
 
-            navList.addEventListener('click', () => {
-                initialContent.style.display = 'none';
-                mapContent.style.display = 'none';
-                listContent.style.display = 'block';
-                settingsContent.style.display = 'none';
-                bottomNav.style.display = 'flex';
-                updateNavigation('list');
-            });
+// Ordenar por distancia
+uniqueResults.sort((a, b) => {
+const aDistance = L.latLng(currentLocation).distanceTo(L.latLng(a.coordinates));
+const bDistance = L.latLng(currentLocation).distanceTo(L.latLng(b.coordinates));
+return aDistance - bDistance;
+});
 
-            navMap.addEventListener('click', () => {
-                showMapView();
-            });
+return uniqueResults;
+}
 
-            settingsButton.addEventListener('click', () => {
-                initialContent.style.display = 'none';
-                mapContent.style.display = 'none';
-                listContent.style.display = 'none';
-                settingsContent.style.display = 'block';
-                bottomNav.style.display = 'flex';
-                updateNavigation('settings');
-            });
+function clearExistingRoutes() {
+if (routingControl) {
+map.removeControl(routingControl);
+routingControl = null;
+}
+if (mapFullRoutingControl) {
+mapFull.removeControl(mapFullRoutingControl);
+mapFullRoutingControl = null;
+}
+}
 
-            navSettings.addEventListener('click', () => {
-                initialContent.style.display = 'none';
-                mapContent.style.display = 'none';
-                listContent.style.display = 'none';
-                settingsContent.style.display = 'block';
-                bottomNav.style.display = 'flex';
-                updateNavigation('settings');
-            });
+function showRouteToStop(stopCoordinates, stopName, lineName) {
+clearExistingRoutes();
 
-            // Configuración
-            saveLocationButton.addEventListener('click', () => {
-                const lat = parseFloat(latitudeInput.value);
-                const lng = parseFloat(longitudeInput.value);
+// Ocultar todas las paradas y líneas excepto la seleccionada
+clearMetroRoutes(map);
+clearMetroRoutes(mapFull);
 
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    updateUserLocation(lat, lng);
-                    alert('Ubicación guardada correctamente.');
-                    initialContent.style.display = 'block';
-                    settingsContent.style.display = 'none';
-                    updateNavigation('home');
-                } else {
-                    alert('Por favor, introduce valores de latitud y longitud válidos.');
-                }
-            });
+// Guardar en el historial
+const routeInfo = {
+from: currentLocation,
+to: stopCoordinates,
+stopName: stopName,
+lineName: lineName,
+date: new Date().toLocaleString()
+};
 
-            // Historial
-            clearHistoryButton.addEventListener('click', () => {
-                routeHistory = [];
-                localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
-                updateRouteHistoryDisplay();
-            });
+// Evitar duplicados
+const isDuplicate = routeHistory.some(item =>
+item.stopName === stopName &&
+item.lineName === lineName &&
+item.date === routeInfo.date
+);
 
-            // Mapa
-            map.on('click', (e) => {
-                let closestStop = null;
-                let minDistance = Infinity;
-                let closestRouteName = "";
-                let closestStopData = null;
+if (!isDuplicate) {
+routeHistory.unshift(routeInfo);
+if (routeHistory.length > 10) {
+routeHistory.pop();
+}
+localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
+updateRouteHistoryDisplay();
+}
 
-                metroRoutes.forEach(route => {
-                    route.stops.forEach(stop => {
-                        const distance = L.latLng(e.latlng).distanceTo(L.latLng(stop.coordinates));
-                        if (distance < minDistance) {
-                            minDistance = distance;
-                            closestStop = stop.coordinates;
-                            closestRouteName = route.name;
-                            closestStopData = stop;
-                        }
-                    });
-                });
+// Guardar en búsquedas recientes
+const searchTerm = `${stopName} (${lineName})`;
+if (!recentSearches.includes(searchTerm)) {
+recentSearches.unshift(searchTerm);
+if (recentSearches.length > 5) {
+recentSearches.pop();
+}
+localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+updateRecentSearchesDisplay();
+}
 
-                if (closestStop && minDistance < 500) {
-                    showStopDetails(closestStopData, metroRoutes.find(r => r.name === closestRouteName));
-                }
-            });
-        }
+// Crear la ruta en el mapa principal
+routingControl = L.Routing.control({
+waypoints: [
+L.latLng(currentLocation),
+L.latLng(stopCoordinates)
+],
+routeWhileDragging: false,
+showAlternatives: false,
+addWaypoints: false,
+lineOptions: {
+styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
+},
+createMarker: function() { return null; }
+}).addTo(map);
 
-        // Iniciar la aplicación
-        initialize();
-    </script>
+// Crear la ruta en el mapa de pantalla completa
+mapFullRoutingControl = L.Routing.control({
+waypoints: [
+L.latLng(currentLocation),
+L.latLng(stopCoordinates)
+],
+routeWhileDragging: false,
+showAlternatives: false,
+addWaypoints: false,
+lineOptions: {
+styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
+},
+createMarker: function() { return null; }
+}).addTo(mapFull);
+
+// Mostrar información de la ruta
+routingControl.on('routesfound', function(e) {
+const routes = e.routes;
+const summary = routes[0].summary;
+
+const routeInfo = document.createElement('div');
+routeInfo.innerHTML = `
+<b>Ruta a ${stopName}</b><br>
+Línea: ${lineName}<br>
+Distancia: ${(summary.totalDistance / 1000).toFixed(2)} km<br>
+Tiempo estimado: ${Math.round(summary.totalTime / 60)} minutos
+`;
+
+userLocationMarker.bindPopup(routeInfo).openPopup();
+});
+}
+
+function selectStop(suggestion) {
+searchInput.value = suggestion.name;
+suggestionsContainer.style.display = 'none';
+searchButton.style.display = 'none';
+
+// Cambiar a la vista del mapa
+showMapView();
+
+// Centrar el mapa en la parada seleccionada
+map.setView(suggestion.coordinates, 15);
+mapFull.setView(suggestion.coordinates, 15);
+
+// Actualizar marcador de parada seleccionada
+updateSelectedStopMarker(suggestion.coordinates, suggestion.name, suggestion.line);
+
+// Mostrar la ruta
+showRouteToStop(suggestion.coordinates, suggestion.name, suggestion.line);
+}
+
+function updateSelectedStopMarker(coordinates, name, line) {
+if (selectedStopMarker) {
+map.removeLayer(selectedStopMarker);
+mapFull.removeLayer(selectedStopMarker);
+}
+
+const stopIcon = L.divIcon({
+className: 'selected-stop-icon',
+html: '<div style="background-color: #FF9500; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
+iconSize: [24, 24]
+});
+
+selectedStopMarker = L.marker(coordinates, {icon: stopIcon})
+.bindPopup(`<b>${line}</b><br>${name}`)
+.addTo(map);
+
+L.marker(coordinates, {icon: stopIcon})
+.bindPopup(`<b>${line}</b><br>${name}`)
+.addTo(mapFull);
+}
+
+function showStopDetails(stop, route) {
+// Cambiar a la vista del mapa
+showMapView();
+
+// Centrar el mapa en la parada seleccionada
+map.setView(stop.coordinates, 15);
+mapFull.setView(stop.coordinates, 15);
+
+// Actualizar marcador de parada seleccionada
+updateSelectedStopMarker(stop.coordinates, stop.name, route.name);
+
+// Mostrar la ruta
+showRouteToStop(stop.coordinates, stop.name, route.name);
+}
+
+function showMapView() {
+initialContent.style.display = 'none';
+mapContent.style.display = 'block';
+listContent.style.display = 'none';
+settingsContent.style.display = 'none';
+mapFullContainer.style.display = 'block';
+closeMapButton.style.display = 'block';
+bottomNav.style.display = 'flex';
+mapFull.invalidateSize();
+
+// Actualizar navegación
+updateNavigation('map');
+}
+
+function showSuggestions(query) {
+const suggestions = searchStops(query);
+suggestionsContainer.innerHTML = '';
+
+if (suggestions.length === 0) {
+suggestionsContainer.style.display = 'none';
+return;
+}
+
+suggestions.forEach(suggestion => {
+const item = document.createElement('div');
+item.className = 'suggestion-item';
+item.innerHTML = `
+<div>${suggestion.name}</div>
+<div class="line">${suggestion.line}</div>
+`;
+
+item.addEventListener('click', () => {
+selectStop(suggestion);
+});
+
+suggestionsContainer.appendChild(item);
+});
+
+suggestionsContainer.style.display = 'block';
+}
+
+function loadMetroList() {
+metroListContainer.innerHTML = '';
+
+// Mostrar solo paradas cercanas (dentro de 2km)
+const nearbyStops = getNearbyStops(currentLocation, 2000);
+
+metroRoutes.forEach(route => {
+// Filtrar solo las paradas cercanas para esta línea
+const routeStops = route.stops.filter(stop =>
+nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
+);
+
+if (routeStops.length > 0) {
+const routeList = document.createElement('ul');
+routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
+
+routeStops.forEach(stop => {
+const stopItem = document.createElement('li');
+stopItem.innerHTML = `
+<div>${stop.name}</div>
+<small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>
+`;
+
+stopItem.addEventListener('click', () => {
+showStopDetails(stop, route);
+});
+
+routeList.appendChild(stopItem);
+});
+
+metroListContainer.appendChild(routeList);
+}
+});
+}
+
+function updateRouteHistoryDisplay() {
+routeHistoryContainer.innerHTML = '';
+
+if (routeHistory.length === 0) {
+routeHistoryContainer.innerHTML = '<p>No hay rutas en el historial</p>';
+return;
+}
+
+routeHistory.forEach((route, index) => {
+const item = document.createElement('div');
+item.className = 'history-item';
+item.innerHTML = `
+<div><strong>${route.stopName}</strong></div>
+<div>Línea: ${route.lineName}</div>
+<small>${route.date}</small>
+`;
+
+item.addEventListener('click', () => {
+showMapView();
+
+// Centrar el mapa en la parada seleccionada
+map.setView(route.to, 15);
+mapFull.setView(route.to, 15);
+
+// Actualizar ubicación actual
+currentLocation = route.from;
+updateUserLocation(route.from[0], route.from[1]);
+
+// Actualizar marcador de parada seleccionada
+updateSelectedStopMarker(route.to, route.stopName, route.lineName);
+
+// Mostrar la ruta
+showRouteToStop(route.to, route.stopName, route.lineName);
+});
+
+routeHistoryContainer.appendChild(item);
+});
+}
+
+function updateRecentSearchesDisplay() {
+recentTermsList.innerHTML = '';
+
+if (recentSearches.length === 0) {
+recentTermsList.innerHTML = '<li>No hay búsquedas recientes</li>';
+return;
+}
+
+recentSearches.forEach(term => {
+const item = document.createElement('li');
+item.textContent = term;
+
+item.addEventListener('click', () => {
+// Buscar directamente el término
+const suggestions = searchStops(term);
+if (suggestions.length > 0) {
+selectStop(suggestions[0]);
+} else {
+alert('No se encontraron resultados para: ' + term);
+}
+});
+
+recentTermsList.appendChild(item);
+});
+}
+
+function updateNavigation(activeView) {
+// Reset all icons
+navHome.classList.remove('active');
+navList.classList.remove('active');
+navMap.classList.remove('active');
+navSettings.classList.remove('active');
+
+// Set active icon
+switch(activeView) {
+case 'home':
+navHome.classList.add('active');
+break;
+case 'list':
+navList.classList.add('active');
+break;
+case 'map':
+navMap.classList.add('active');
+break;
+case 'settings':
+navSettings.classList.add('active');
+break;
+}
+}
+
+function setupEventListeners() {
+// Buscador
+searchInput.addEventListener('input', (e) => {
+if (e.target.value.trim() !== '') {
+searchButton.style.display = 'block';
+showSuggestions(e.target.value);
+} else {
+searchButton.style.display = 'none';
+suggestionsContainer.style.display = 'none';
+}
+});
+
+searchInput.addEventListener('focus', () => {
+if (searchInput.value) {
+showSuggestions(searchInput.value);
+}
+});
+
+searchButton.addEventListener('click', () => {
+const query = searchInput.value.trim();
+if (query !== '') {
+const suggestions = searchStops(query);
+if (suggestions.length > 0) {
+selectStop(suggestions[0]);
+} else {
+alert('No se encontraron resultados para: ' + query);
+}
+}
+});
+
+searchInput.addEventListener('keypress', (e) => {
+if (e.key === 'Enter') {
+searchButton.click();
+}
+});
+
+document.addEventListener('click', (e) => {
+if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+suggestionsContainer.style.display = 'none';
+}
+});
+
+// Navegación
+mapButton.addEventListener('click', () => {
+showMapView();
+});
+
+closeMapButton.addEventListener('click', () => {
+mapFullContainer.style.display = 'none';
+closeMapButton.style.display = 'none';
+mapContent.style.display = 'none';
+initialContent.style.display = 'block';
+listContent.style.display = 'none';
+settingsContent.style.display = 'none';
+bottomNav.style.display = 'flex';
+updateNavigation('home');
+
+// Restaurar la visualización de rutas cercanas
+drawMetroRoutes(map);
+drawMetroRoutes(mapFull);
+});
+
+navHome.addEventListener('click', () => {
+initialContent.style.display = 'block';
+mapContent.style.display = 'none';
+listContent.style.display = 'none';
+settingsContent.style.display = 'none';
+mapFullContainer.style.display = 'none';
+closeMapButton.style.display = 'none';
+bottomNav.style.display = 'flex';
+updateNavigation('home');
+
+// Restaurar la visualización de rutas cercanas
+drawMetroRoutes(map);
+drawMetroRoutes(mapFull);
+});
+
+listButton.addEventListener('click', () => {
+initialContent.style.display = 'none';
+mapContent.style.display = 'none';
+listContent.style.display = 'block';
+settingsContent.style.display = 'none';
+bottomNav.style.display = 'flex';
+updateNavigation('list');
+});
+
+navList.addEventListener('click', () => {
+initialContent.style.display = 'none';
+mapContent.style.display = 'none';
+listContent.style.display = 'block';
+settingsContent.style.display = 'none';
+bottomNav.style.display = 'flex';
+updateNavigation('list');
+});
+
+navMap.addEventListener('click', () => {
+showMapView();
+});
+
+settingsButton.addEventListener('click', () => {
+initialContent.style.display = 'none';
+mapContent.style.display = 'none';
+listContent.style.display = 'none';
+settingsContent.style.display = 'block';
+bottomNav.style.display = 'flex';
+updateNavigation('settings');
+});
+
+navSettings.addEventListener('click', () => {
+initialContent.style.display = 'none';
+mapContent.style.display = 'none';
+listContent.style.display = 'none';
+settingsContent.style.display = 'block';
+bottomNav.style.display = 'flex';
+updateNavigation('settings');
+});
+
+// Configuración
+saveLocationButton.addEventListener('click', () => {
+const lat = parseFloat(latitudeInput.value);
+const lng = parseFloat(longitudeInput.value);
+
+if (!isNaN(lat) && !isNaN(lng)) {
+updateUserLocation(lat, lng);
+alert('Ubicación guardada correctamente.');
+initialContent.style.display = 'block';
+settingsContent.style.display = 'none';
+updateNavigation('home');
+} else {
+alert('Por favor, introduce valores de latitud y longitud válidos.');
+}
+});
+
+// Historial
+clearHistoryButton.addEventListener('click', () => {
+routeHistory = [];
+localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
+updateRouteHistoryDisplay();
+});
+
+// Mapa
+map.on('click', (e) => {
+let closestStop = null;
+let minDistance = Infinity;
+let closestRouteName = "";
+let closestStopData = null;
+
+metroRoutes.forEach(route => {
+route.stops.forEach(stop => {
+const distance = L.latLng(e.latlng).distanceTo(L.latLng(stop.coordinates));
+if (distance < minDistance) {
+minDistance = distance;
+closestStop = stop.coordinates;
+closestRouteName = route.name;
+closestStopData = stop;
+}
+});
+});
+
+if (closestStop && minDistance < 500) {
+showStopDetails(closestStopData, metroRoutes.find(r => r.name === closestRouteName));
+}
+});
+}
+
+// Iniciar la aplicación
+initialize();
+</script>
+
+<script>
+// Registro del Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(registration => {
+        console.log('SW registrado:', registration);
+      })
+      .catch(error => {
+        console.log('Error al registrar SW:', error);
+      });
+  });
+}
+</script>
 </body>
 </html>
