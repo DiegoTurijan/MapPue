@@ -7,722 +7,444 @@
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <style>
-:root {
-  --primary-color: #007AFF;
-  --secondary-color: #34C759;
-  --background-color: #F2F2F7;
-  --card-color: #FFFFFF;
-  --text-primary: #1C1C1E;
-  --text-secondary: #8E8E93;
-  --border-radius: 12px;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
+  :root {
+    --primary-color: #007AFF;
+    --secondary-color: #34C759;
+    --background-color: #F2F2F7; /* Tailwind gray-100 */
+    --card-color: #FFFFFF;
+    --text-primary: #1C1C1E;
+    --text-secondary: #8E8E93;
+    --border-radius: 12px;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background-color: var(--background-color);
+    min-height: 100vh;
+    position: relative;
+    box-sizing: border-box;
+    color: var(--text-primary);
+    /* padding-bottom will be dynamically set for main app */
+  }
+
+  /* Styles for the questionnaire message box */
+  .message-box {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 2000; /* Higher than map elements */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    pointer-events: none;
+  }
+  .message-box.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+  .message-box.success {
+    background-color: #d1fae5; /* Tailwind green-100 */
+    color: #065f46; /* Tailwind green-800 */
+    border: 1px solid #6ee7b7; /* Tailwind green-300 */
+  }
+  .message-box.error {
+    background-color: #fee2e2; /* Tailwind red-100 */
+    color: #991b1b; /* Tailwind red-800 */
+    border: 1px solid #fca5a5; /* Tailwind red-300 */
+  }
+
+  /* Original Transportes Puebla App Styles (some might be overridden by Tailwind or adjusted) */
+  .container {
+    width: 90%;
+    max-width: 800px;
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: var(--shadow);
+    /* margin-bottom: 76px; /* Applied by mainAppWrapper or specific last container */
+  }
+  #mainAppWrapper > .container:last-of-type { /* Ensure bottom margin for scroll if needed, excluding bottom-nav */
+    margin-bottom: 20px; /* Or adjust as necessary */
+  }
+
+
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .search-container {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .search-bar {
+    background-color: rgba(142, 142, 147, 0.12);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+  }
+
+  .search-bar:focus-within {
+    background-color: rgba(142, 142, 147, 0.18);
+  }
+
+  .search-bar input[type="text"] {
+    border: none;
+    background: transparent;
+    width: 100%;
+    padding: 6px;
+    outline: none;
+    flex-grow: 1;
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+
+  .search-bar input[type="text"]::placeholder {
+    color: var(--text-secondary);
+  }
+
+  .search-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: none; /* Initially hidden */
+    padding: 5px;
+    color: var(--primary-color);
+  }
+
+  .suggestions-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--card-color);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--shadow);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    border-top: 1px solid rgba(142, 142, 147, 0.1);
+  }
+
+  .suggestion-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(142, 142, 147, 0.1);
+    transition: background-color 0.2s;
+  }
+  .suggestion-item:hover { background-color: rgba(142, 142, 147, 0.08); }
+  .suggestion-item .line { font-size: 0.8em; color: var(--text-secondary); margin-top: 4px; }
+
+  .recent-terms h2 { font-size: 1em; margin-bottom: 12px; color: var(--text-secondary); font-weight: 500; padding-left: 4px; }
+  .recent-terms ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .recent-terms li { background-color: rgba(142, 142, 147, 0.12); border-radius: 50px; padding: 8px 16px; cursor: pointer; transition: background-color 0.2s; font-size: 14px; }
+  .recent-terms li:hover { background-color: rgba(142, 142, 147, 0.18); }
+
+  .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .grid-item { background-color: var(--card-color); border-radius: var(--border-radius); padding: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s, background-color 0.2s; box-shadow: var(--shadow); }
+  .grid-item:hover { transform: translateY(-2px); background-color: rgba(142, 142, 147, 0.05); }
+  .grid-item .material-icons { font-size: 32px; margin-bottom: 12px; color: var(--primary-color); background-color: rgba(0, 122, 255, 0.1); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .grid-item p { margin-bottom: 0; font-weight: 500; }
+
+  .map-section { border-radius: var(--border-radius); padding: 0; text-align: center; margin-bottom: 20px; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+  #map { height: 400px; width: 100%; border-radius: var(--border-radius); }
+  #map-full { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 1000; display: none; border-radius: 0; }
+  #map-full .leaflet-container { height: 100%; width: 100%; }
+  .close-button { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; cursor: pointer; z-index: 1001; background-color: rgba(0,0,0,0.6); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+
+  .bottom-nav { background-color: var(--card-color); width: 100%; display: flex; justify-content: space-around; padding: 10px 0; position: fixed; bottom: 0; left: 0; z-index: 1000; box-shadow: 0px -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; border-top: 1px solid rgba(142,142,147,0.1); }
+  .bottom-nav .material-icons { font-size: 28px; padding: 8px; border-radius: 50%; transition: background-color 0.2s; color: var(--text-secondary); cursor:pointer; }
+  .bottom-nav .material-icons.active { color: var(--primary-color); }
+  .bottom-nav .material-icons:hover { background-color: rgba(142, 142, 147, 0.1); }
+
+  .list-container, .settings-container { padding: 20px; border-radius: var(--border-radius); background-color: var(--card-color); margin-top: 20px; box-shadow: var(--shadow); }
+  .list-container h2, .settings-container h2 { margin-bottom: 16px; text-align: center; font-weight: 600; }
+  .list-container ul { list-style: none; padding: 0; margin-bottom: 20px; }
+  .list-container li { padding: 14px 16px; border-bottom: 1px solid rgba(142, 142, 147, 0.1); cursor: pointer; transition: background-color 0.2s; }
+  .list-container li:hover { background-color: rgba(142, 142, 147, 0.08); }
+  .list-container li:last-child { border-bottom: none; }
+
+  .settings-container label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary); }
+  .settings-container input[type="number"] { width: 100%; padding: 12px; border: 1px solid rgba(142, 142, 147, 0.2); border-radius: 8px; margin-bottom: 16px; font-size: 16px; background-color: var(--background-color); box-sizing: border-box; }
+  .settings-container button { background-color: var(--primary-color); color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 16px; width: 100%; transition: opacity 0.2s; }
+  .settings-container button:hover { opacity: 0.9; }
+
+  .history-list { margin-top: 20px; max-height: 300px; overflow-y: auto; }
+  .history-item { padding: 12px 16px; border-bottom: 1px solid rgba(142, 142, 147, 0.1); cursor: pointer; transition: background-color 0.2s; }
+  .history-item:hover { background-color: rgba(142, 142, 147, 0.08); }
+  .history-item strong { display: block; margin-bottom: 4px; }
+  .history-item small { color: var(--text-secondary); font-size: 0.8em; }
+  #clear-history { background-color: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); margin-top: 16px; }
+  #clear-history:hover { background-color: rgba(0, 122, 255, 0.1); }
+
+  .leaflet-routing-container { background-color: var(--card-color); padding: 10px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  .leaflet-routing-alternatives-container { display: none; }
+  .selected-stop-icon div, .user-location-icon div { background-color: #FF9500; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white; box-sizing: border-box;}
+  .user-location-icon div { background-color: var(--primary-color); }
+
+  .metro-line-1 { color: #FF3B30; }
+  .metro-line-2 { color: #007AFF; }
+  .metro-line-3 { color: #34C759; }
+
+  /* Ensure main app wrapper allows content to flow and center */
+  #mainAppWrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: var(--background-color);
-  min-height: 100vh;
-  position: relative;
-  padding-bottom: 56px;
-  box-sizing: border-box;
-  color: var(--text-primary);
-}
-
-.container {
-  width: 90%;
-  max-width: 800px;
-  background-color: var(--card-color);
-  border-radius: var(--border-radius);
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: var(--shadow);
-  margin-bottom: 76px;
-}
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.search-container {
-  position: relative;
-  margin-bottom: 20px;
-}
-
-.search-bar {
-  background-color: rgba(142, 142, 147, 0.12);
-  border-radius: 10px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.search-bar:focus-within {
-  background-color: rgba(142, 142, 147, 0.18);
-}
-
-.search-bar input[type="text"] {
-  border: none;
-  background: transparent;
-  width: 100%;
-  padding: 6px;
-  outline: none;
-  flex-grow: 1;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.search-bar input[type="text"]::placeholder {
-  color: var(--text-secondary);
-}
-
-.search-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: none;
-  padding: 5px;
-  color: var(--primary-color);
-}
-
-.suggestions-container {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background-color: var(--card-color);
-  border-radius: 0 0 var(--border-radius) var(--border-radius);
-  box-shadow: var(--shadow);
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
-  display: none;
-  border-top: 1px solid rgba(142, 142, 147, 0.1);
-}
-
-.suggestion-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(142, 142, 147, 0.1);
-  transition: background-color 0.2s;
-}
-
-.suggestion-item:hover {
-  background-color: rgba(142, 142, 147, 0.08);
-}
-
-.suggestion-item .line {
-  font-size: 0.8em;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-
-.recent-terms {
-  margin-bottom: 20px;
-}
-
-.recent-terms h2 {
-  font-size: 1em;
-  margin-bottom: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-  padding-left: 4px;
-}
-
-.recent-terms ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.recent-terms li {
-  background-color: rgba(142, 142, 147, 0.12);
-  border-radius: 50px;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  font-size: 14px;
-}
-
-.recent-terms li:hover {
-  background-color: rgba(142, 142, 147, 0.18);
-}
-
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.grid-item {
-  background-color: var(--card-color);
-  border-radius: var(--border-radius);
-  padding: 20px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
-  box-shadow: var(--shadow);
-}
-
-.grid-item:hover {
-  transform: translateY(-2px);
-  background-color: rgba(142, 142, 147, 0.05);
-}
-
-.grid-item .material-icons {
-  font-size: 32px;
-  margin-bottom: 12px;
-  color: var(--primary-color);
-  background-color: rgba(0, 122, 255, 0.1);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.grid-item p {
-  margin-bottom: 0;
-  font-weight: 500;
-}
-
-.map-section {
-  border-radius: var(--border-radius);
-  padding: 0;
-  text-align: center;
-  margin-bottom: 20px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-#map {
-  height: 400px;
-  width: 100%;
-  border-radius: var(--border-radius);
-}
-
-#map-full {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
-  z-index: 1000;
-  display: none;
-  border-radius: 0;
-}
-
-#map-full .leaflet-container {
-  height: 100%;
-  width: 100%;
-}
-
-.bottom-nav {
-  background-color: var(--card-color);
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  z-index: 1000;
-  box-shadow: 0px -2px 10px rgba(0,0,0,0.05);
-  box-sizing: border-box;
-  border-top: 1px solid rgba(142, 142, 147, 0.1);
-}
-
-.bottom-nav .material-icons {
-  font-size: 28px;
-  padding: 8px;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-  color: var(--text-secondary);
-}
-
-.bottom-nav .material-icons.active {
-  color: var(--primary-color);
-}
-
-.bottom-nav .material-icons:hover {
-  background-color: rgba(142, 142, 147, 0.1);
-}
-
-.close-button {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  color: white;
-  font-size: 30px;
-  cursor: pointer;
-  z-index: 1001;
-  display: none;
-  background-color: rgba(0, 0, 0, 0.6);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#initial-content {
-  display: block;
-}
-
-#map-content {
-  display: none;
-}
-
-#list-content {
-  display: none;
-}
-
-#settings-content {
-  display: none;
-}
-
-.list-container {
-  padding: 20px;
-  border-radius: var(--border-radius);
-  background-color: var(--card-color);
-  margin-top: 20px;
-  box-shadow: var(--shadow);
-}
-
-.list-container h2 {
-  margin-bottom: 16px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.list-container ul {
-  list-style: none;
-  padding: 0;
-  margin-bottom: 20px;
-}
-
-.list-container li {
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(142, 142, 147, 0.1);
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.list-container li:hover {
-  background-color: rgba(142, 142, 147, 0.08);
-}
-
-.list-container li:last-child {
-  border-bottom: none;
-}
-
-.settings-container {
-  padding: 20px;
-  border-radius: var(--border-radius);
-  background-color: var(--card-color);
-  margin-top: 20px;
-  box-shadow: var(--shadow);
-}
-
-.settings-container h2 {
-  margin-bottom: 20px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.settings-container label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.settings-container input[type="number"] {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid rgba(142, 142, 147, 0.2);
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 16px;
-  background-color: var(--background-color);
-}
-
-.settings-container button {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 16px;
-  width: 100%;
-  transition: opacity 0.2s;
-}
-
-.settings-container button:hover {
-  opacity: 0.9;
-}
-
-.history-list {
-  margin-top: 20px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.history-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(142, 142, 147, 0.1);
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.history-item:hover {
-  background-color: rgba(142, 142, 147, 0.08);
-}
-
-.history-item strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.history-item small {
-  color: var(--text-secondary);
-  font-size: 0.8em;
-}
-
-#clear-history {
-  background-color: transparent;
-  color: var(--primary-color);
-  border: 1px solid var(--primary-color);
-  margin-top: 16px;
-}
-
-#clear-history:hover {
-  background-color: rgba(0, 122, 255, 0.1);
-}
-
-.leaflet-routing-container {
-  background-color: var(--card-color);
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  margin-bottom: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-}
-
-.leaflet-routing-alternatives-container {
-  display: none;
-}
-
-.leaflet-routing-route {
-  color: var(--primary-color);
-  padding: 5px;
-  border-radius: 5px;
-  margin-bottom: 5px;
-}
-
-.leaflet-routing-route:hover {
-  background-color: rgba(142, 142, 147, 0.08);
-  cursor: pointer;
-}
-
-.selected-stop-icon {
-  background-color: #FF9500;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  border: 2px solid white;
-}
-
-.user-location-icon {
-  background-color: var(--primary-color);
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  border: 2px solid white;
-}
-
-.metro-line-1 {
-  color: #FF3B30;
-}
-
-.metro-line-2 {
-  color: #007AFF;
-}
-
-.metro-line-3 {
-  color: #34C759;
-}
-
-/* Nuevos estilos para el modal del cuestionario */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  padding: 20px;
-}
-
-.modal-content {
-  background-color: var(--card-color);
-  border-radius: var(--border-radius);
-  padding: 20px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: var(--shadow);
-}
-
-.modal-title {
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid rgba(142, 142, 147, 0.2);
-  border-radius: 8px;
-  font-size: 16px;
-  background-color: var(--background-color);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
-
-.submit-btn {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 16px;
-  transition: opacity 0.2s;
-}
-
-.submit-btn:hover {
-  opacity: 0.9;
-}
 </style>
 </head>
 <body>
 
-<!-- Modal para el cuestionario inicial -->
-<div id="questionnaire-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content">
-    <h2 class="modal-title">Información del Usuario</h2>
-    <p style="text-align: center; margin-bottom: 20px; color: var(--text-secondary);">
-      Por favor, completa esta información para mejorar tu experiencia
-    </p>
-    <form id="user-form">
-      <div class="form-group">
-        <label for="user-name">Nombre:</label>
-        <input type="text" id="user-name" name="nombre" required>
+  <div id="questionnaireContainer" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md hidden">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Información Personal</h2>
+    <form id="personalInfoForm">
+      <div class="mb-4">
+        <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo:</label>
+        <input type="text" id="nombre" name="nombre" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
       </div>
-      
-      <div class="form-group">
-        <label for="user-age">Edad:</label>
-        <input type="number" id="user-age" name="edad" required min="1">
+      <div class="mb-4">
+        <label for="edad" class="block text-sm font-medium text-gray-700 mb-1">Edad:</label>
+        <input type="number" id="edad" name="edad" required min="1"
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
       </div>
-      
-      <div class="form-group">
-        <label for="user-gender">Sexo:</label>
-        <select id="user-gender" name="sexo" required>
-          <option value="">Seleccione</option>
+      <div class="mb-4">
+        <label for="sexo" class="block text-sm font-medium text-gray-700 mb-1">Sexo:</label>
+        <select id="sexo" name="sexo" required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <option value="">Seleccione una opción</option>
           <option value="Masculino">Masculino</option>
           <option value="Femenino">Femenino</option>
           <option value="Otro">Otro</option>
+          <option value="Prefiero no decir">Prefiero no decir</option>
         </select>
       </div>
-      
-      <div class="form-group">
-        <label for="user-education">Nivel Escolar:</label>
-        <input type="text" id="user-education" name="nivelEscolar" required>
+      <div class="mb-6">
+        <label for="nivelEscolar" class="block text-sm font-medium text-gray-700 mb-1">Nivel Escolar:</label>
+        <input type="text" id="nivelEscolar" name="nivelEscolar" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
       </div>
-      
-      <div class="form-actions">
-        <button type="submit" class="submit-btn">Enviar</button>
-      </div>
+      <button type="submit"
+              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+        Enviar Datos
+      </button>
     </form>
   </div>
-</div>
 
-<div class="container" id="initial-content">
-  <h1>Transportes</h1>
-  <div class="search-container">
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="Buscar parada o línea">
-      <button class="search-button" id="search-button">
-        <span class="material-icons">search</span>
-      </button>
+  <div id="mainAppWrapper" class="hidden">
+    <div class="container" id="initial-content">
+      <h1>Transportes</h1>
+      <div class="search-container">
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Buscar parada o línea">
+          <button class="search-button" id="search-button">
+            <span class="material-icons">search</span>
+          </button>
+        </div>
+        <div class="suggestions-container" id="suggestions"></div>
+      </div>
+      <div class="recent-terms">
+        <h2>Términos recientes</h2>
+        <ul id="recent-terms-list"></ul>
+      </div>
+      <div class="grid-container">
+        <div class="grid-item" id="map-button">
+          <span class="material-icons">map</span>
+          <p>Mapa</p>
+        </div>
+        <div class="grid-item" id="list-button">
+          <span class="material-icons">list</span>
+          <p>Lista</p>
+        </div>
+        <div class="grid-item" id="settings-button">
+          <span class="material-icons">settings</span>
+          <p>Configuración</p>
+        </div>
+      </div>
     </div>
-    <div class="suggestions-container" id="suggestions">
+
+    <div class="container hidden" id="map-content"> <div class="map-section">
+        <div id="map"></div>
+         </div>
+    </div>
+     <div id="map-full"> <span class="close-button" id="close-map">&times;</span>
+        </div>
+
+
+    <div class="container hidden" id="list-content"> <div class="list-container">
+        <h2>Paradas del Metro</h2>
+        <div id="metro-list"></div>
+      </div>
+    </div>
+
+    <div class="container hidden" id="settings-content"> <div class="settings-container">
+        <h2>Configuración</h2>
+        <label for="latitude">Latitud:</label>
+        <input type="number" id="latitude" placeholder="Ej: 19.0417" value="19.0417">
+        <label for="longitude">Longitud:</label>
+        <input type="number" id="longitude" placeholder="Ej: -98.2000" value="-98.2000">
+        <button id="save-location">Guardar Ubicación</button>
+
+        <h3 style="margin-top: 20px;">Historial de Rutas</h3>
+        <div class="history-list" id="route-history"></div>
+        <button id="clear-history">Limpiar Historial</button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <span class="material-icons active" id="nav-home">home</span>
+      <span class="material-icons" id="nav-list">list</span>
+      <span class="material-icons" id="nav-map">map</span>
+      <span class="material-icons" id="nav-settings">settings</span>
     </div>
   </div>
-  <div class="recent-terms">
-    <h2>Términos recientes</h2>
-    <ul id="recent-terms-list">
-    </ul>
-  </div>
-  <div class="grid-container">
-    <div class="grid-item" id="map-button">
-      <span class="material-icons">map</span>
-      <p>Mapa</p>
-    </div>
-    <div class="grid-item" id="list-button">
-      <span class="material-icons">list</span>
-      <p>Lista</p>
-    </div>
-    <div class="grid-item" id="settings-button">
-      <span class="material-icons">settings</span>
-      <p>Configuración</p>
-    </div>
-  </div>
-</div>
 
-<div class="container" id="map-content">
-  <div class="map-section">
-    <div id="map"></div>
-    <div id="map-full">
-      <span class="close-button" id="close-map">&times;</span>
-    </div>
+  <div id="messageBox" class="message-box">
+    <span id="messageText"></span>
   </div>
-</div>
-
-<div class="container" id="list-content">
-  <div class="list-container">
-    <h2>Paradas del Metro</h2>
-    <div id="metro-list"></div>
-  </div>
-</div>
-
-<div class="container" id="settings-content">
-  <div class="settings-container">
-    <h2>Configuración</h2>
-    <label for="latitude">Latitud:</label>
-    <input type="number" id="latitude" placeholder="Ej: 19.0417" value="19.0417">
-    <label for="longitude">Longitud:</label>
-    <input type="number" id="longitude" placeholder="Ej: -98.2000" value="-98.2000">
-    <button id="save-location">Guardar Ubicación</button>
-
-    <h3 style="margin-top: 20px;">Historial de Rutas</h3>
-    <div class="history-list" id="route-history">
-    </div>
-    <button id="clear-history">Limpiar Historial</button>
-  </div>
-</div>
-
-<div class="bottom-nav">
-  <span class="material-icons active" id="nav-home">home</span>
-  <span class="material-icons" id="nav-list">list</span>
-  <span class="material-icons" id="nav-map">map</span>
-  <span class="material-icons" id="nav-settings">settings</span>
-</div>
 
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.1/dist/leaflet-routing-machine.js"></script>
 <script>
-// Inicializar el mapa principal
-var map = L.map('map').setView([19.0417, -98.2000], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
+// --- Questionnaire Logic ---
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiukXVfPeMosfuBPil3XR2xl9sVjEf1-AOmkEdNts5ndziYxlZUEPBOlwOlhWVWbzl/exec';
+const FORM_SUBMITTED_KEY = 'personalInfoFormSubmitted';
 
-// Inicializar el mapa en pantalla completa
-var mapFull = L.map('map-full', {
-  attributionControl: false,
-}).setView([19.0417, -98.2000], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(mapFull);
+// DOM Elements for Questionnaire and Main App
+const questionnaireContainer = document.getElementById('questionnaireContainer');
+const personalInfoForm = document.getElementById('personalInfoForm');
+const messageBox = document.getElementById('messageBox');
+const messageText = document.getElementById('messageText');
+let mainAppWrapper = document.getElementById('mainAppWrapper'); // Defined here, assigned in init
 
-var metroRoutes = [
-  {
-    name: "Línea 1",
-    color: "#FF3B30",
-    stops: [
-      { name: "Estación 1-1 - Centro", coordinates: [19.0500, -98.2100] },
-      { name: "Estación 1-2 - Universidad", coordinates: [19.0450, -98.2050] },
-      { name: "Estación 1-3 - Mercado", coordinates: [19.0400, -98.2000] },
-      { name: "Estación 1-4 - Parque", coordinates: [19.0350, -98.1950] },
-      { name: "Estación 1-5 - Terminal", coordinates: [19.0300, -98.1900] }
-    ]
-  },
-  {
-    name: "Línea 2",
-    color: "#007AFF",
-    stops: [
-      { name: "Estación 2-1 - Norte", coordinates: [19.0600, -98.2200] },
-      { name: "Estación 2-2 - Hospital", coordinates: [19.0550, -98.2150] },
-      { name: "Estación 2-3 - Centro", coordinates: [19.0500, -98.2100] },
-      { name: "Estación 2-4 - Escuela", coordinates: [19.0450, -98.2050] },
-      { name: "Estación 2-5 - Sur", coordinates: [19.0400, -98.2000] }
-    ]
-  },
-  {
-    name: "Línea 3",
-    color: "#34C759",
-    stops: [
-      { name: "Estación 3-1 - Este", coordinates: [19.0700, -98.2300] },
-      { name: "Estación 3-2 - Estadio", coordinates: [19.0650, -98.2250] },
-      { name: "Estación 3-3 - Centro Comercial", coordinates: [19.0600, -98.2200] },
-      { name: "Estación 3-4 - Oficinas", coordinates: [19.0550, -98.2150] },
-      { name: "Estación 3-5 - Oeste", coordinates: [19.0500, -98.2100] }
-    ]
+/**
+ * Displays a message to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - 'success' or 'error'.
+ * @param {number} duration - How long to show the message in ms.
+ */
+function showMessage(message, type = 'success', duration = 3000) {
+  if (!messageBox || !messageText) {
+    console.warn("MessageBox not found, falling back to alert:", message);
+    alert(message);
+    return;
   }
-];
+  messageText.textContent = message;
+  messageBox.className = `message-box ${type} show`;
 
-// Variables globales
-let userLocationMarker;
-let selectedStopMarker = null;
-let routingControl = null;
-let mapFullRoutingControl = null;
+  setTimeout(() => {
+    messageBox.classList.remove('show');
+  }, duration);
+}
+
+/**
+ * Shows the main application content and hides the questionnaire.
+ */
+function showMainApplication() {
+  if (questionnaireContainer) questionnaireContainer.classList.add('hidden');
+  if (mainAppWrapper) mainAppWrapper.classList.remove('hidden');
+
+  // Adjust body classes for main app
+  document.body.classList.remove('flex', 'items-center', 'justify-center', 'p-4');
+  document.body.style.padding = '0'; // Reset padding
+  document.body.style.paddingBottom = '56px'; // For fixed bottom nav
+
+  // Call the original app's initialization function
+  if (typeof initializeTransportesApp === 'function') {
+    initializeTransportesApp();
+  } else {
+    console.error("initializeTransportesApp function not found!");
+  }
+}
+
+/**
+ * Handles the form submission for the questionnaire.
+ * @param {Event} event - The form submission event.
+ */
+async function handleQuestionnaireFormSubmit(event) {
+  event.preventDefault();
+  const form = event.target;
+  const nombre = encodeURIComponent(form.nombre.value.trim());
+  const edad = encodeURIComponent(form.edad.value.trim());
+  const sexo = encodeURIComponent(form.sexo.value);
+  const nivelEscolar = encodeURIComponent(form.nivelEscolar.value.trim());
+
+  const url = `${APPS_SCRIPT_URL}?nombre=${nombre}&edad=${edad}&sexo=${sexo}&nivelEscolar=${nivelEscolar}`;
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = 'Enviando...';
+
+  try {
+    const response = await fetch(url);
+    const responseText = await response.text();
+    if (response.ok) {
+      showMessage('Datos enviados correctamente: ' + responseText, 'success');
+      localStorage.setItem(FORM_SUBMITTED_KEY, 'true');
+      form.reset();
+      showMainApplication();
+    } else {
+      showMessage('Error del servidor: ' + responseText, 'error');
+    }
+  } catch (error) {
+    console.error('Error al enviar el formulario:', error);
+    showMessage('Error al enviar los datos. Por favor, inténtalo de nuevo. Detalles: ' + error.message, 'error');
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Enviar Datos';
+  }
+}
+
+/**
+ * Initializes the questionnaire or the main app.
+ */
+function initializeOverallApp() {
+  mainAppWrapper = document.getElementById('mainAppWrapper'); // Ensure it's assigned
+  const formSubmitted = localStorage.getItem(FORM_SUBMITTED_KEY);
+
+  if (formSubmitted === 'true') {
+    showMainApplication();
+  } else {
+    // Setup body for questionnaire
+    document.body.classList.add('flex', 'items-center', 'justify-center', 'p-4', 'bg-gray-100');
+    document.body.style.paddingBottom = '0px';
+
+    if (questionnaireContainer) questionnaireContainer.classList.remove('hidden');
+    if (mainAppWrapper) mainAppWrapper.classList.add('hidden');
+    if (personalInfoForm) {
+      personalInfoForm.addEventListener('submit', handleQuestionnaireFormSubmit);
+    } else {
+        console.error("Personal info form not found for event listener attachment.");
+    }
+  }
+}
+
+// --- Transportes Puebla App Logic ---
+// (Original JS from index.txt, with `initialize` renamed to `initializeTransportesApp`
+// and `alert` calls replaced with `showMessage`)
+
+let map, mapFull; // Make them globally accessible for init
+let userLocationMarker, selectedStopMarker = null, routingControl = null, mapFullRoutingControl = null;
 let mapCenter = [19.0417, -98.2000];
 let currentLocation = [19.0417, -98.2000];
 let routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
@@ -730,752 +452,486 @@ let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || ["Cen
 let metroMarkers = [];
 let metroLines = [];
 
-// Elementos del DOM
-const searchInput = document.getElementById('search-input');
-const searchButton = document.getElementById('search-button');
-const suggestionsContainer = document.getElementById('suggestions');
-const mapButton = document.getElementById('map-button');
-const mapFullContainer = document.getElementById('map-full');
-const closeMapButton = document.getElementById('close-map');
-const initialContent = document.getElementById('initial-content');
-const mapContent = document.getElementById('map-content');
-const listContent = document.getElementById('list-content');
-const settingsContent = document.getElementById('settings-content');
-const bottomNav = document.querySelector('.bottom-nav');
-const listButton = document.getElementById('list-button');
-const metroListContainer = document.getElementById('metro-list');
-const settingsButton = document.getElementById('settings-button');
-const saveLocationButton = document.getElementById('save-location');
-const latitudeInput = document.getElementById('latitude');
-const longitudeInput = document.getElementById('longitude');
-const recentTermsList = document.getElementById('recent-terms-list');
-const routeHistoryContainer = document.getElementById('route-history');
-const clearHistoryButton = document.getElementById('clear-history');
-const navHome = document.getElementById('nav-home');
-const navList = document.getElementById('nav-list');
-const navMap = document.getElementById('nav-map');
-const navSettings = document.getElementById('nav-settings');
+// DOM Elements for Transportes App
+let searchInput, searchButton, suggestionsContainer, mapButtonElement, mapFullContainer, closeMapButton,
+    initialContent, mapContent, listContent, settingsContent, bottomNav, listButtonElement,
+    metroListContainer, settingsButtonElement, saveLocationButton, latitudeInput, longitudeInput,
+    recentTermsList, routeHistoryContainer, clearHistoryButton,
+    navHome, navList, navMap, navSettings;
 
-// Inicialización
-function initialize() {
-  drawMetroRoutes(map);
-  drawMetroRoutes(mapFull);
-  updateUserLocation(mapCenter[0], mapCenter[1]);
-  updateRouteHistoryDisplay();
-  updateRecentSearchesDisplay();
-  setupEventListeners();
-  loadMetroList();
+
+const metroRoutes = [
+    { name: "Línea 1", color: "#FF3B30", stops: [ { name: "Estación 1-1 - Centro", coordinates: [19.0500, -98.2100] }, { name: "Estación 1-2 - Universidad", coordinates: [19.0450, -98.2050] }, { name: "Estación 1-3 - Mercado", coordinates: [19.0400, -98.2000] }, { name: "Estación 1-4 - Parque", coordinates: [19.0350, -98.1950] }, { name: "Estación 1-5 - Terminal", coordinates: [19.0300, -98.1900] } ] },
+    { name: "Línea 2", color: "#007AFF", stops: [ { name: "Estación 2-1 - Norte", coordinates: [19.0600, -98.2200] }, { name: "Estación 2-2 - Hospital", coordinates: [19.0550, -98.2150] }, { name: "Estación 2-3 - Centro", coordinates: [19.0500, -98.2100] }, { name: "Estación 2-4 - Escuela", coordinates: [19.0450, -98.2050] }, { name: "Estación 2-5 - Sur", coordinates: [19.0400, -98.2000] } ] },
+    { name: "Línea 3", color: "#34C759", stops: [ { name: "Estación 3-1 - Este", coordinates: [19.0700, -98.2300] }, { name: "Estación 3-2 - Estadio", coordinates: [19.0650, -98.2250] }, { name: "Estación 3-3 - Centro Comercial", coordinates: [19.0600, -98.2200] }, { name: "Estación 3-4 - Oficinas", coordinates: [19.0550, -98.2150] }, { name: "Estación 3-5 - Oeste", coordinates: [19.0500, -98.2100] } ] }
+];
+
+function initializeTransportesApp() {
+    // Assign DOM elements for Transportes App
+    searchInput = document.getElementById('search-input');
+    searchButton = document.getElementById('search-button');
+    suggestionsContainer = document.getElementById('suggestions');
+    mapButtonElement = document.getElementById('map-button');
+    mapFullContainer = document.getElementById('map-full');
+    closeMapButton = document.getElementById('close-map');
+    initialContent = document.getElementById('initial-content');
+    mapContent = document.getElementById('map-content');
+    listContent = document.getElementById('list-content');
+    settingsContent = document.getElementById('settings-content');
+    bottomNav = document.querySelector('.bottom-nav');
+    listButtonElement = document.getElementById('list-button');
+    metroListContainer = document.getElementById('metro-list');
+    settingsButtonElement = document.getElementById('settings-button');
+    saveLocationButton = document.getElementById('save-location');
+    latitudeInput = document.getElementById('latitude');
+    longitudeInput = document.getElementById('longitude');
+    recentTermsList = document.getElementById('recent-terms-list');
+    routeHistoryContainer = document.getElementById('route-history');
+    clearHistoryButton = document.getElementById('clear-history');
+    navHome = document.getElementById('nav-home');
+    navList = document.getElementById('nav-list');
+    navMap = document.getElementById('nav-map');
+    navSettings = document.getElementById('nav-settings');
+
+    // Initialize maps only if the elements exist
+    if (document.getElementById('map')) {
+        map = L.map('map').setView([19.0417, -98.2000], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+    } else {
+        console.error("Map element with ID 'map' not found.");
+    }
+
+    if (document.getElementById('map-full')._leaflet_id === undefined) { // Check if map not already initialized
+       // The map-full div itself is the container for Leaflet
+        mapFull = L.map(mapFullContainer).setView([19.0417, -98.2000], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapFull);
+    } else {
+        // mapFull = L.DomUtil.get('map-full')._leaflet_id; // This is not how you get the map instance
+        console.log("Map-full already initialized or element issue.");
+    }
+
+
+    // Initial drawing and setup
+    if (map) drawMetroRoutes(map);
+    if (mapFull) drawMetroRoutes(mapFull);
+    updateUserLocation(mapCenter[0], mapCenter[1]);
+    updateRouteHistoryDisplay();
+    updateRecentSearchesDisplay();
+    setupEventListeners();
+    loadMetroList();
+
+    // Show initial content of the transport app
+    if(initialContent) initialContent.style.display = 'block';
+    if(mapContent) mapContent.style.display = 'none'; // Ensure others are hidden
+    if(listContent) listContent.style.display = 'none';
+    if(settingsContent) settingsContent.style.display = 'none';
+    if(bottomNav) bottomNav.style.display = 'flex';
+    updateNavigation('home');
+
 }
 
 function drawMetroRoutes(mapToDraw) {
-  // Limpiar marcadores y líneas existentes
-  clearMetroRoutes(mapToDraw);
+    if (!mapToDraw) return;
+    clearMetroRoutes(mapToDraw);
+    const nearbyStops = getNearbyStops(currentLocation, 2000);
 
-  // Dibujar solo las paradas cercanas (dentro de 2km)
-  const nearbyStops = getNearbyStops(currentLocation, 2000); // 2000 metros = 2km
-
-  metroRoutes.forEach(route => {
-    // Filtrar solo las paradas cercanas para esta línea
-    const routeStops = route.stops.filter(stop =>
-      nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
-    );
-
-    if (routeStops.length > 0) {
-      // Dibujar la línea solo si tiene paradas cercanas
-      const line = L.polyline(routeStops.map(stop => stop.coordinates), {
-        color: route.color,
-        weight: 5,
-        opacity: 0.7
-      }).addTo(mapToDraw);
-
-      metroLines.push({map: mapToDraw, line: line});
-
-      // Dibujar marcadores para las paradas cercanas
-      routeStops.forEach(stop => {
-        const marker = L.marker(stop.coordinates)
-          .bindPopup(`<b>${route.name} - ${stop.name}</b>`)
-          .addTo(mapToDraw);
-
-        metroMarkers.push({map: mapToDraw, marker: marker});
-
-        marker.on('click', function(e) {
-          showStopDetails(stop, route);
-        });
-      });
-    }
-  });
+    metroRoutes.forEach(route => {
+        const routeStops = route.stops.filter(stop =>
+            nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
+        );
+        if (routeStops.length > 0) {
+            const line = L.polyline(routeStops.map(stop => stop.coordinates), { color: route.color, weight: 5, opacity: 0.7 }).addTo(mapToDraw);
+            metroLines.push({map: mapToDraw, line: line});
+            routeStops.forEach(stop => {
+                const marker = L.marker(stop.coordinates).bindPopup(`<b>${route.name} - ${stop.name}</b>`).addTo(mapToDraw);
+                metroMarkers.push({map: mapToDraw, marker: marker});
+                marker.on('click', function(e) { showStopDetails(stop, route); });
+            });
+        }
+    });
 }
 
 function clearMetroRoutes(mapToDraw) {
-  // Eliminar marcadores específicos de este mapa
-  metroMarkers
-    .filter(m => m.map === mapToDraw)
-    .forEach(m => {
-      m.map.removeLayer(m.marker);
-    });
-  metroMarkers = metroMarkers.filter(m => m.map !== mapToDraw);
-
-  // Eliminar líneas específicas de este mapa
-  metroLines
-    .filter(l => l.map === mapToDraw)
-    .forEach(l => {
-      l.map.removeLayer(l.line);
-    });
-  metroLines = metroLines.filter(l => l.map !== mapToDraw);
+    if (!mapToDraw) return;
+    metroMarkers.filter(m => m.map === mapToDraw).forEach(m => { m.map.removeLayer(m.marker); });
+    metroMarkers = metroMarkers.filter(m => m.map !== mapToDraw);
+    metroLines.filter(l => l.map === mapToDraw).forEach(l => { l.map.removeLayer(l.line); });
+    metroLines = metroLines.filter(l => l.map !== mapToDraw);
 }
 
 function getNearbyStops(location, maxDistance) {
-  const nearbyStops = [];
-
-  metroRoutes.forEach(route => {
-    route.stops.forEach(stop => {
-      const distance = L.latLng(location).distanceTo(L.latLng(stop.coordinates));
-      if (distance <= maxDistance) {
-        nearbyStops.push({
-          name: stop.name,
-          line: route.name,
-          coordinates: stop.coordinates,
-          distance: distance
+    const nearbyStops = [];
+    metroRoutes.forEach(route => {
+        route.stops.forEach(stop => {
+            const distance = L.latLng(location).distanceTo(L.latLng(stop.coordinates));
+            if (distance <= maxDistance) {
+                nearbyStops.push({ name: stop.name, line: route.name, coordinates: stop.coordinates, distance: distance });
+            }
         });
-      }
     });
-  });
-
-  // Ordenar por distancia (más cercanas primero)
-  nearbyStops.sort((a, b) => a.distance - b.distance);
-
-  return nearbyStops;
+    nearbyStops.sort((a, b) => a.distance - b.distance);
+    return nearbyStops;
 }
 
 function updateUserLocation(lat, lng) {
-  currentLocation = [lat, lng];
-  mapCenter = [lat, lng];
-  map.setView(mapCenter, 13);
-  mapFull.setView(mapCenter, 13);
+    currentLocation = [lat, lng];
+    mapCenter = [lat, lng];
+    if (map) map.setView(mapCenter, 13);
+    if (mapFull) mapFull.setView(mapCenter, 13);
 
-  if (userLocationMarker) {
-    map.removeLayer(userLocationMarker);
-    mapFull.removeLayer(userLocationMarker);
-  }
+    if (userLocationMarker) {
+        if (map) map.removeLayer(userLocationMarker);
+        if (mapFull && mapFull.hasLayer(userLocationMarker)) mapFull.removeLayer(userLocationMarker); // Check before removing
+    }
 
-  const userIcon = L.divIcon({
-    className: 'user-location-icon',
-    html: '<div style="background-color: #007AFF; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
-    iconSize: [24, 24]
-  });
-
-  userLocationMarker = L.marker(currentLocation, {icon: userIcon})
-    .bindPopup("<b>Tu ubicación</b>")
-    .addTo(map);
-
-  L.marker(currentLocation, {icon: userIcon})
-    .bindPopup("<b>Tu ubicación</b>")
-    .addTo(mapFull);
-
-  // Actualizar rutas mostradas basadas en la nueva ubicación
-  drawMetroRoutes(map);
-  drawMetroRoutes(mapFull);
+    const userIcon = L.divIcon({ className: 'user-location-icon', html: '<div></div>', iconSize: [24, 24] });
+    if (map) {
+        userLocationMarker = L.marker(currentLocation, {icon: userIcon}).bindPopup("<b>Tu ubicación</b>").addTo(map);
+    }
+    if (mapFull) { // Create a new marker for mapFull or update existing
+        L.marker(currentLocation, {icon: userIcon}).bindPopup("<b>Tu ubicación</b>").addTo(mapFull);
+    }
+    if (map) drawMetroRoutes(map);
+    if (mapFull) drawMetroRoutes(mapFull);
 }
 
 function searchStops(query) {
-  if (!query) return [];
+    if (!query) return [];
+    const results = [];
+    const lowerQuery = query.toLowerCase();
+    const nearbyStops = getNearbyStops(currentLocation, 2000);
 
-  const results = [];
-  const lowerQuery = query.toLowerCase();
-
-  // Buscar solo en paradas cercanas (dentro de 2km)
-  const nearbyStops = getNearbyStops(currentLocation, 2000);
-
-  nearbyStops.forEach(stop => {
-    if (stop.name.toLowerCase().includes(lowerQuery)) {
-      const route = metroRoutes.find(r => r.name === stop.line);
-      if (route) {
-        const routeStop = route.stops.find(s => s.name === stop.name);
-        if (routeStop) {
-          results.push({
-            name: stop.name,
-            line: route.name,
-            coordinates: stop.coordinates,
-            stopData: routeStop,
-            routeData: route
-          });
+    nearbyStops.forEach(stop => {
+        if (stop.name.toLowerCase().includes(lowerQuery)) {
+            const route = metroRoutes.find(r => r.name === stop.line);
+            if (route) {
+                const routeStop = route.stops.find(s => s.name === stop.name);
+                if (routeStop) results.push({ name: stop.name, line: route.name, coordinates: stop.coordinates, stopData: routeStop, routeData: route });
+            }
         }
-      }
-    }
-  });
-
-  // También buscar por nombre de línea
-  metroRoutes.forEach(route => {
-    if (route.name.toLowerCase().includes(lowerQuery)) {
-      route.stops.forEach(stop => {
-        if (nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)) {
-          results.push({
-            name: stop.name,
-            line: route.name,
-            coordinates: stop.coordinates,
-            stopData: stop,
-            routeData: route
-          });
+    });
+    metroRoutes.forEach(route => {
+        if (route.name.toLowerCase().includes(lowerQuery)) {
+            route.stops.forEach(stop => {
+                if (nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)) {
+                    results.push({ name: stop.name, line: route.name, coordinates: stop.coordinates, stopData: stop, routeData: route });
+                }
+            });
         }
-      });
-    }
-  });
-
-  // Eliminar duplicados
-  const uniqueResults = results.filter((result, index, self) =>
-    index === self.findIndex((t) => (
-      t.name === result.name && t.line === result.line
-    ))
-  );
-
-  // Ordenar por distancia
-  uniqueResults.sort((a, b) => {
-    const aDistance = L.latLng(currentLocation).distanceTo(L.latLng(a.coordinates));
-    const bDistance = L.latLng(currentLocation).distanceTo(L.latLng(b.coordinates));
-    return aDistance - bDistance;
-  });
-
-  return uniqueResults;
+    });
+    const uniqueResults = results.filter((result, index, self) => index === self.findIndex((t) => (t.name === result.name && t.line === result.line)));
+    uniqueResults.sort((a, b) => L.latLng(currentLocation).distanceTo(L.latLng(a.coordinates)) - L.latLng(currentLocation).distanceTo(L.latLng(b.coordinates)));
+    return uniqueResults;
 }
 
 function clearExistingRoutes() {
-  if (routingControl) {
-    map.removeControl(routingControl);
+    if (routingControl && map) map.removeControl(routingControl);
     routingControl = null;
-  }
-  if (mapFullRoutingControl) {
-    mapFull.removeControl(mapFullRoutingControl);
+    if (mapFullRoutingControl && mapFull) mapFull.removeControl(mapFullRoutingControl);
     mapFullRoutingControl = null;
-  }
 }
 
 function showRouteToStop(stopCoordinates, stopName, lineName) {
-  clearExistingRoutes();
+    if (!map || !mapFull) return;
+    clearExistingRoutes();
+    if (map) clearMetroRoutes(map);
+    if (mapFull) clearMetroRoutes(mapFull);
 
-  // Ocultar todas las paradas y líneas excepto la seleccionada
-  clearMetroRoutes(map);
-  clearMetroRoutes(mapFull);
-
-  // Guardar en el historial
-  const routeInfo = {
-    from: currentLocation,
-    to: stopCoordinates,
-    stopName: stopName,
-    lineName: lineName,
-    date: new Date().toLocaleString()
-  };
-
-  // Evitar duplicados
-  const isDuplicate = routeHistory.some(item =>
-    item.stopName === stopName &&
-    item.lineName === lineName &&
-    item.date === routeInfo.date
-  );
-
-  if (!isDuplicate) {
-    routeHistory.unshift(routeInfo);
-    if (routeHistory.length > 10) {
-      routeHistory.pop();
+    const routeInfoHist = { from: currentLocation, to: stopCoordinates, stopName: stopName, lineName: lineName, date: new Date().toLocaleString() };
+    if (!routeHistory.some(item => item.stopName === stopName && item.lineName === lineName && item.date === routeInfoHist.date)) {
+        routeHistory.unshift(routeInfoHist);
+        if (routeHistory.length > 10) routeHistory.pop();
+        localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
+        updateRouteHistoryDisplay();
     }
-    localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
-    updateRouteHistoryDisplay();
-  }
-
-  // Guardar en búsquedas recientes
-  const searchTerm = `${stopName} (${lineName})`;
-  if (!recentSearches.includes(searchTerm)) {
-    recentSearches.unshift(searchTerm);
-    if (recentSearches.length > 5) {
-      recentSearches.pop();
+    const searchTerm = `${stopName} (${lineName})`;
+    if (!recentSearches.includes(searchTerm)) {
+        recentSearches.unshift(searchTerm);
+        if (recentSearches.length > 5) recentSearches.pop();
+        localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+        updateRecentSearchesDisplay();
     }
-    localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
-    updateRecentSearchesDisplay();
-  }
 
-  // Crear la ruta en el mapa principal
-  routingControl = L.Routing.control({
-    waypoints: [
-      L.latLng(currentLocation),
-      L.latLng(stopCoordinates)
-    ],
-    routeWhileDragging: false,
-    showAlternatives: false,
-    addWaypoints: false,
-    lineOptions: {
-      styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
-    },
-    createMarker: function() { return null; }
-  }).addTo(map);
+    routingControl = L.Routing.control({ waypoints: [L.latLng(currentLocation), L.latLng(stopCoordinates)], routeWhileDragging: false, showAlternatives: false, addWaypoints: false, lineOptions: { styles: [{color: '#007AFF', opacity: 0.7, weight: 5}] }, createMarker: function() { return null; } }).addTo(map);
+    mapFullRoutingControl = L.Routing.control({ waypoints: [L.latLng(currentLocation), L.latLng(stopCoordinates)], routeWhileDragging: false, showAlternatives: false, addWaypoints: false, lineOptions: { styles: [{color: '#007AFF', opacity: 0.7, weight: 5}] }, createMarker: function() { return null; } }).addTo(mapFull);
 
-  // Crear la ruta en el mapa de pantalla completa
-  mapFullRoutingControl = L.Routing.control({
-    waypoints: [
-      L.latLng(currentLocation),
-      L.latLng(stopCoordinates)
-    ],
-    routeWhileDragging: false,
-    showAlternatives: false,
-    addWaypoints: false,
-    lineOptions: {
-      styles: [{color: '#007AFF', opacity: 0.7, weight: 5}]
-    },
-    createMarker: function() { return null; }
-  }).addTo(mapFull);
-
-  // Mostrar información de la ruta
-  routingControl.on('routesfound', function(e) {
-    const routes = e.routes;
-    const summary = routes[0].summary;
-
-    const routeInfo = document.createElement('div');
-    routeInfo.innerHTML = `
-      <b>Ruta a ${stopName}</b><br>
-      Línea: ${lineName}<br>
-      Distancia: ${(summary.totalDistance / 1000).toFixed(2)} km<br>
-      Tiempo estimado: ${Math.round(summary.totalTime / 60)} minutos
-    `;
-
-    userLocationMarker.bindPopup(routeInfo).openPopup();
-  });
+    routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        if (routes.length === 0) return;
+        const summary = routes[0].summary;
+        const routeInfoPopup = document.createElement('div');
+        routeInfoPopup.innerHTML = `<b>Ruta a ${stopName}</b><br>Línea: ${lineName}<br>Distancia: ${(summary.totalDistance / 1000).toFixed(2)} km<br>Tiempo: ${Math.round(summary.totalTime / 60)} min`;
+        if (userLocationMarker) userLocationMarker.bindPopup(routeInfoPopup).openPopup();
+    });
 }
 
 function selectStop(suggestion) {
-  searchInput.value = suggestion.name;
-  suggestionsContainer.style.display = 'none';
-  searchButton.style.display = 'none';
-
-  // Cambiar a la vista del mapa
-  showMapView();
-
-  // Centrar el mapa en la parada seleccionada
-  map.setView(suggestion.coordinates, 15);
-  mapFull.setView(suggestion.coordinates, 15);
-
-  // Actualizar marcador de parada seleccionada
-  updateSelectedStopMarker(suggestion.coordinates, suggestion.name, suggestion.line);
-
-  // Mostrar la ruta
-  showRouteToStop(suggestion.coordinates, suggestion.name, suggestion.line);
+    searchInput.value = suggestion.name;
+    suggestionsContainer.style.display = 'none';
+    if(searchButton) searchButton.style.display = 'none';
+    showMapView();
+    if (map) map.setView(suggestion.coordinates, 15);
+    if (mapFull) mapFull.setView(suggestion.coordinates, 15);
+    updateSelectedStopMarker(suggestion.coordinates, suggestion.name, suggestion.line);
+    showRouteToStop(suggestion.coordinates, suggestion.name, suggestion.line);
 }
 
 function updateSelectedStopMarker(coordinates, name, line) {
-  if (selectedStopMarker) {
-    map.removeLayer(selectedStopMarker);
-    mapFull.removeLayer(selectedStopMarker);
-  }
-
-  const stopIcon = L.divIcon({
-    className: 'selected-stop-icon',
-    html: '<div style="background-color: #FF9500; border-radius: 50%; width: 20px; height: 20px; border: 2px solid white;"></div>',
-    iconSize: [24, 24]
-  });
-
-  selectedStopMarker = L.marker(coordinates, {icon: stopIcon})
-    .bindPopup(`<b>${line}</b><br>${name}`)
-    .addTo(map);
-
-  L.marker(coordinates, {icon: stopIcon})
-    .bindPopup(`<b>${line}</b><br>${name}`)
-    .addTo(mapFull);
+    if (!map || !mapFull) return;
+    if (selectedStopMarker) {
+        if (map.hasLayer(selectedStopMarker)) map.removeLayer(selectedStopMarker);
+        if (mapFull.hasLayer(selectedStopMarker)) mapFull.removeLayer(selectedStopMarker);
+    }
+    const stopIcon = L.divIcon({ className: 'selected-stop-icon', html: '<div></div>', iconSize: [24, 24] });
+    selectedStopMarker = L.marker(coordinates, {icon: stopIcon}).bindPopup(`<b>${line}</b><br>${name}`).addTo(map);
+    L.marker(coordinates, {icon: stopIcon}).bindPopup(`<b>${line}</b><br>${name}`).addTo(mapFull); // Add to full map too
 }
 
+
 function showStopDetails(stop, route) {
-  // Cambiar a la vista del mapa
-  showMapView();
-
-  // Centrar el mapa en la parada seleccionada
-  map.setView(stop.coordinates, 15);
-  mapFull.setView(stop.coordinates, 15);
-
-  // Actualizar marcador de parada seleccionada
-  updateSelectedStopMarker(stop.coordinates, stop.name, route.name);
-
-  // Mostrar la ruta
-  showRouteToStop(stop.coordinates, stop.name, route.name);
+    showMapView();
+    if (map) map.setView(stop.coordinates, 15);
+    if (mapFull) mapFull.setView(stop.coordinates, 15);
+    updateSelectedStopMarker(stop.coordinates, stop.name, route.name);
+    showRouteToStop(stop.coordinates, stop.name, route.name);
 }
 
 function showMapView() {
-  initialContent.style.display = 'none';
-  mapContent.style.display = 'block';
-  listContent.style.display = 'none';
-  settingsContent.style.display = 'none';
-  mapFullContainer.style.display = 'block';
-  closeMapButton.style.display = 'block';
-  bottomNav.style.display = 'flex';
-  mapFull.invalidateSize();
-
-  // Actualizar navegación
-  updateNavigation('map');
+    if(initialContent) initialContent.style.display = 'none';
+    if(mapContent) mapContent.style.display = 'block';
+    if(listContent) listContent.style.display = 'none';
+    if(settingsContent) settingsContent.style.display = 'none';
+    if(mapFullContainer) mapFullContainer.style.display = 'block'; // Show the map-full div
+    if(closeMapButton) closeMapButton.style.display = 'flex'; // Show close button for map-full
+    if(bottomNav) bottomNav.style.display = 'flex';
+    if (mapFull) mapFull.invalidateSize(); // Important for Leaflet
+    if (map) map.invalidateSize();
+    updateNavigation('map');
 }
 
+
 function showSuggestions(query) {
-  const suggestions = searchStops(query);
-  suggestionsContainer.innerHTML = '';
-
-  if (suggestions.length === 0) {
-    suggestionsContainer.style.display = 'none';
-    return;
-  }
-
-  suggestions.forEach(suggestion => {
-    const item = document.createElement('div');
-    item.className = 'suggestion-item';
-    item.innerHTML = `
-      <div>${suggestion.name}</div>
-      <div class="line">${suggestion.line}</div>
-    `;
-
-    item.addEventListener('click', () => {
-      selectStop(suggestion);
+    if (!suggestionsContainer) return;
+    const suggestions = searchStops(query);
+    suggestionsContainer.innerHTML = '';
+    if (suggestions.length === 0) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+    suggestions.forEach(suggestion => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.innerHTML = `<div>${suggestion.name}</div><div class="line">${suggestion.line}</div>`;
+        item.addEventListener('click', () => { selectStop(suggestion); });
+        suggestionsContainer.appendChild(item);
     });
-
-    suggestionsContainer.appendChild(item);
-  });
-
-  suggestionsContainer.style.display = 'block';
+    suggestionsContainer.style.display = 'block';
 }
 
 function loadMetroList() {
-  metroListContainer.innerHTML = '';
-
-  // Mostrar solo paradas cercanas (dentro de 2km)
-  const nearbyStops = getNearbyStops(currentLocation, 2000);
-
-  metroRoutes.forEach(route => {
-    // Filtrar solo las paradas cercanas para esta línea
-    const routeStops = route.stops.filter(stop =>
-      nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name)
-    );
-
-    if (routeStops.length > 0) {
-      const routeList = document.createElement('ul');
-      routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
-
-      routeStops.forEach(stop => {
-        const stopItem = document.createElement('li');
-        stopItem.innerHTML = `
-          <div>${stop.name}</div>
-          <small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>
-        `;
-
-        stopItem.addEventListener('click', () => {
-          showStopDetails(stop, route);
-        });
-
-        routeList.appendChild(stopItem);
-      });
-
-      metroListContainer.appendChild(routeList);
-    }
-  });
+    if (!metroListContainer) return;
+    metroListContainer.innerHTML = '';
+    const nearbyStops = getNearbyStops(currentLocation, 2000);
+    metroRoutes.forEach(route => {
+        const routeStops = route.stops.filter(stop => nearbyStops.some(ns => ns.name === stop.name && ns.line === route.name));
+        if (routeStops.length > 0) {
+            const routeList = document.createElement('ul');
+            routeList.innerHTML = `<h3 class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</h3>`;
+            routeStops.forEach(stop => {
+                const stopItem = document.createElement('li');
+                stopItem.innerHTML = `<div>${stop.name}</div><small class="metro-line-${metroRoutes.indexOf(route) + 1}">${route.name}</small>`;
+                stopItem.addEventListener('click', () => { showStopDetails(stop, route); });
+                routeList.appendChild(stopItem);
+            });
+            metroListContainer.appendChild(routeList);
+        }
+    });
 }
 
 function updateRouteHistoryDisplay() {
-  routeHistoryContainer.innerHTML = '';
-
-  if (routeHistory.length === 0) {
-    routeHistoryContainer.innerHTML = '<p>No hay rutas en el historial</p>';
-    return;
-  }
-
-  routeHistory.forEach((route, index) => {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.innerHTML = `
-      <div><strong>${route.stopName}</strong></div>
-      <div>Línea: ${route.lineName}</div>
-      <small>${route.date}</small>
-    `;
-
-    item.addEventListener('click', () => {
-      showMapView();
-
-      // Centrar el mapa en la parada seleccionada
-      map.setView(route.to, 15);
-      mapFull.setView(route.to, 15);
-
-      // Actualizar ubicación actual
-      currentLocation = route.from;
-      updateUserLocation(route.from[0], route.from[1]);
-
-      // Actualizar marcador de parada seleccionada
-      updateSelectedStopMarker(route.to, route.stopName, route.lineName);
-
-      // Mostrar la ruta
-      showRouteToStop(route.to, route.stopName, route.lineName);
+    if (!routeHistoryContainer) return;
+    routeHistoryContainer.innerHTML = '';
+    if (routeHistory.length === 0) {
+        routeHistoryContainer.innerHTML = '<p>No hay rutas en el historial</p>';
+        return;
+    }
+    routeHistory.forEach((route) => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `<div><strong>${route.stopName}</strong></div><div>Línea: ${route.lineName}</div><small>${route.date}</small>`;
+        item.addEventListener('click', () => {
+            showMapView();
+            if (map) map.setView(route.to, 15);
+            if (mapFull) mapFull.setView(route.to, 15);
+            currentLocation = route.from; // Update current location based on history
+            updateUserLocation(route.from[0], route.from[1]);
+            updateSelectedStopMarker(route.to, route.stopName, route.lineName);
+            showRouteToStop(route.to, route.stopName, route.lineName);
+        });
+        routeHistoryContainer.appendChild(item);
     });
-
-    routeHistoryContainer.appendChild(item);
-  });
 }
 
 function updateRecentSearchesDisplay() {
-  recentTermsList.innerHTML = '';
-
-  if (recentSearches.length === 0) {
-    recentTermsList.innerHTML = '<li>No hay búsquedas recientes</li>';
-    return;
-  }
-
-  recentSearches.forEach(term => {
-    const item = document.createElement('li');
-    item.textContent = term;
-
-    item.addEventListener('click', () => {
-      // Buscar directamente el término
-      const suggestions = searchStops(term);
-      if (suggestions.length > 0) {
-        selectStop(suggestions[0]);
-      } else {
-        alert('No se encontraron resultados para: ' + term);
-      }
+    if (!recentTermsList) return;
+    recentTermsList.innerHTML = '';
+    if (recentSearches.length === 0) {
+        recentTermsList.innerHTML = '<li>No hay búsquedas recientes</li>';
+        return;
+    }
+    recentSearches.forEach(term => {
+        const item = document.createElement('li');
+        item.textContent = term;
+        item.addEventListener('click', () => {
+            const suggestions = searchStops(term);
+            if (suggestions.length > 0) {
+                selectStop(suggestions[0]);
+            } else {
+                showMessage('No se encontraron resultados para: ' + term, 'error');
+            }
+        });
+        recentTermsList.appendChild(item);
     });
-
-    recentTermsList.appendChild(item);
-  });
 }
 
 function updateNavigation(activeView) {
-  // Reset all icons
-  navHome.classList.remove('active');
-  navList.classList.remove('active');
-  navMap.classList.remove('active');
-  navSettings.classList.remove('active');
-
-  // Set active icon
-  switch(activeView) {
-    case 'home':
-      navHome.classList.add('active');
-      break;
-    case 'list':
-      navList.classList.add('active');
-      break;
-    case 'map':
-      navMap.classList.add('active');
-      break;
-    case 'settings':
-      navSettings.classList.add('active');
-      break;
-  }
+    [navHome, navList, navMap, navSettings].forEach(nav => nav?.classList.remove('active'));
+    switch(activeView) {
+        case 'home': navHome?.classList.add('active'); break;
+        case 'list': navList?.classList.add('active'); break;
+        case 'map': navMap?.classList.add('active'); break;
+        case 'settings': navSettings?.classList.add('active'); break;
+    }
 }
 
 function setupEventListeners() {
-  // Buscador
-  searchInput.addEventListener('input', (e) => {
-    if (e.target.value.trim() !== '') {
-      searchButton.style.display = 'block';
-      showSuggestions(e.target.value);
-    } else {
-      searchButton.style.display = 'none';
-      suggestionsContainer.style.display = 'none';
+    // Null check all elements before adding listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            if (e.target.value.trim() !== '') {
+                if(searchButton) searchButton.style.display = 'block';
+                showSuggestions(e.target.value);
+            } else {
+                if(searchButton) searchButton.style.display = 'none';
+                if(suggestionsContainer) suggestionsContainer.style.display = 'none';
+            }
+        });
+        searchInput.addEventListener('focus', () => { if (searchInput.value) showSuggestions(searchInput.value); });
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchButton?.click(); });
     }
-  });
 
-  searchInput.addEventListener('focus', () => {
-    if (searchInput.value) {
-      showSuggestions(searchInput.value);
+    if (searchButton) {
+        searchButton.addEventListener('click', () => {
+            const query = searchInput.value.trim();
+            if (query !== '') {
+                const suggestions = searchStops(query);
+                if (suggestions.length > 0) selectStop(suggestions[0]);
+                else showMessage('No se encontraron resultados para: ' + query, 'error');
+            }
+        });
     }
-  });
 
-  searchButton.addEventListener('click', () => {
-    const query = searchInput.value.trim();
-    if (query !== '') {
-      const suggestions = searchStops(query);
-      if (suggestions.length > 0) {
-        selectStop(suggestions[0]);
-      } else {
-        alert('No se encontraron resultados para: ' + query);
-      }
-    }
-  });
-
-  searchInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      searchButton.click();
-    }
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-      suggestionsContainer.style.display = 'none';
-    }
-  });
-
-  // Navegación
-  mapButton.addEventListener('click', () => {
-    showMapView();
-  });
-
-  closeMapButton.addEventListener('click', () => {
-    mapFullContainer.style.display = 'none';
-    closeMapButton.style.display = 'none';
-    mapContent.style.display = 'none';
-    initialContent.style.display = 'block';
-    listContent.style.display = 'none';
-    settingsContent.style.display = 'none';
-    bottomNav.style.display = 'flex';
-    updateNavigation('home');
-
-    // Restaurar la visualización de rutas cercanas
-    drawMetroRoutes(map);
-    drawMetroRoutes(mapFull);
-  });
-
-  navHome.addEventListener('click', () => {
-    initialContent.style.display = 'block';
-    mapContent.style.display = 'none';
-    listContent.style.display = 'none';
-    settingsContent.style.display = 'none';
-    mapFullContainer.style.display = 'none';
-    closeMapButton.style.display = 'none';
-    bottomNav.style.display = 'flex';
-    updateNavigation('home');
-
-    // Restaurar la visualización de rutas cercanas
-    drawMetroRoutes(map);
-    drawMetroRoutes(mapFull);
-  });
-
-  listButton.addEventListener('click', () => {
-    initialContent.style.display = 'none';
-    mapContent.style.display = 'none';
-    listContent.style.display = 'block';
-    settingsContent.style.display = 'none';
-    bottomNav.style.display = 'flex';
-    updateNavigation('list');
-  });
-
-  navList.addEventListener('click', () => {
-    initialContent.style.display = 'none';
-    mapContent.style.display = 'none';
-    listContent.style.display = 'block';
-    settingsContent.style.display = 'none';
-    bottomNav.style.display = 'flex';
-    updateNavigation('list');
-  });
-
-  navMap.addEventListener('click', () => {
-    showMapView();
-  });
-
-  settingsButton.addEventListener('click', () => {
-    initialContent.style.display = 'none';
-    mapContent.style.display = 'none';
-    listContent.style.display = 'none';
-    settingsContent.style.display = 'block';
-    bottomNav.style.display = 'flex';
-    updateNavigation('settings');
-  });
-
-  navSettings.addEventListener('click', () => {
-    initialContent.style.display = 'none';
-    mapContent.style.display = 'none';
-    listContent.style.display = 'none';
-    settingsContent.style.display = 'block';
-    bottomNav.style.display = 'flex';
-    updateNavigation('settings');
-  });
-
-  // Configuración
-  saveLocationButton.addEventListener('click', () => {
-    const lat = parseFloat(latitudeInput.value);
-    const lng = parseFloat(longitudeInput.value);
-
-    if (!isNaN(lat) && !isNaN(lng)) {
-      updateUserLocation(lat, lng);
-      alert('Ubicación guardada correctamente.');
-      initialContent.style.display = 'block';
-      settingsContent.style.display = 'none';
-      updateNavigation('home');
-    } else {
-      alert('Por favor, introduce valores de latitud y longitud válidos.');
-    }
-  });
-
-  // Historial
-  clearHistoryButton.addEventListener('click', () => {
-    routeHistory = [];
-    localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
-    updateRouteHistoryDisplay();
-  });
-
-  // Mapa
-  map.on('click', (e) => {
-    let closestStop = null;
-    let minDistance = Infinity;
-    let closestRouteName = "";
-    let closestStopData = null;
-
-    metroRoutes.forEach(route => {
-      route.stops.forEach(stop => {
-        const distance = L.latLng(e.latlng).distanceTo(L.latLng(stop.coordinates));
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestStop = stop.coordinates;
-          closestRouteName = route.name;
-          closestStopData = stop;
+    document.addEventListener('click', (e) => { // Hide suggestions if clicked outside
+        if (suggestionsContainer && searchInput && !searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.style.display = 'none';
         }
-      });
     });
 
-    if (closestStop && minDistance < 500) {
-      showStopDetails(closestStopData, metroRoutes.find(r => r.name === closestRouteName));
+    if (mapButtonElement) mapButtonElement.addEventListener('click', showMapView);
+    if (closeMapButton) {
+        closeMapButton.addEventListener('click', () => {
+            if(mapFullContainer) mapFullContainer.style.display = 'none';
+            if(closeMapButton) closeMapButton.style.display = 'none'; // Hide itself
+            // Show initial content, hide others
+            if(initialContent) initialContent.style.display = 'block';
+            if(mapContent) mapContent.style.display = 'none';
+            if(listContent) listContent.style.display = 'none';
+            if(settingsContent) settingsContent.style.display = 'none';
+            if(bottomNav) bottomNav.style.display = 'flex';
+            updateNavigation('home');
+            if (map) drawMetroRoutes(map); // Redraw nearby routes on main map
+            if (mapFull) drawMetroRoutes(mapFull);
+        });
     }
-  });
+
+    const navigateTo = (view) => {
+        if(initialContent) initialContent.style.display = view === 'home' ? 'block' : 'none';
+        if(mapContent) mapContent.style.display = view === 'map' ? 'block' : 'none';
+        if(listContent) listContent.style.display = view === 'list' ? 'block' : 'none';
+        if(settingsContent) settingsContent.style.display = view === 'settings' ? 'block' : 'none';
+
+        if (view === 'map') {
+            if(mapFullContainer) mapFullContainer.style.display = 'block';
+            if(closeMapButton) closeMapButton.style.display = 'flex';
+            if (map) map.invalidateSize();
+            if (mapFull) mapFull.invalidateSize();
+        } else {
+            if(mapFullContainer) mapFullContainer.style.display = 'none';
+            if(closeMapButton) closeMapButton.style.display = 'none';
+        }
+        if (view === 'home' || view === 'list' || view === 'settings') {
+             if (map) drawMetroRoutes(map); // Refresh main map routes when returning to home/list/settings
+             if (mapFull) drawMetroRoutes(mapFull);
+        }
+        if(bottomNav) bottomNav.style.display = 'flex';
+        updateNavigation(view);
+    };
+
+    if (navHome) navHome.addEventListener('click', () => navigateTo('home'));
+    if (listButtonElement) listButtonElement.addEventListener('click', () => navigateTo('list'));
+    if (navList) navList.addEventListener('click', () => navigateTo('list'));
+    if (navMap) navMap.addEventListener('click', showMapView); // Special handling for map view
+    if (settingsButtonElement) settingsButtonElement.addEventListener('click', () => navigateTo('settings'));
+    if (navSettings) navSettings.addEventListener('click', () => navigateTo('settings'));
+
+    if (saveLocationButton) {
+        saveLocationButton.addEventListener('click', () => {
+            const lat = parseFloat(latitudeInput.value);
+            const lng = parseFloat(longitudeInput.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                updateUserLocation(lat, lng);
+                showMessage('Ubicación guardada correctamente.', 'success');
+                navigateTo('home');
+            } else {
+                showMessage('Por favor, introduce valores de latitud y longitud válidos.', 'error');
+            }
+        });
+    }
+    if (clearHistoryButton) {
+        clearHistoryButton.addEventListener('click', () => {
+            routeHistory = [];
+            localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
+            updateRouteHistoryDisplay();
+            showMessage('Historial de rutas limpiado.', 'success');
+        });
+    }
+
+    if (map) {
+        map.on('click', (e) => {
+            let closestStop = null, minDistance = Infinity, closestRouteName = "", closestStopData = null;
+            metroRoutes.forEach(route => {
+                route.stops.forEach(stop => {
+                    const distance = L.latLng(e.latlng).distanceTo(L.latLng(stop.coordinates));
+                    if (distance < minDistance) {
+                        minDistance = distance; closestStop = stop.coordinates; closestRouteName = route.name; closestStopData = stop;
+                    }
+                });
+            });
+            if (closestStop && minDistance < 500) { // Threshold for clicking near a stop
+                showStopDetails(closestStopData, metroRoutes.find(r => r.name === closestRouteName));
+            }
+        });
+    }
 }
 
-// Función para verificar y mostrar el cuestionario
-function checkAndShowQuestionnaire() {
-  const hasCompletedQuestionnaire = localStorage.getItem('hasCompletedQuestionnaire');
-  
-  if (!hasCompletedQuestionnaire) {
-    const modal = document.getElementById('questionnaire-modal');
-    modal.style.display = 'flex';
-    
-    const form = document.getElementById('user-form');
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const nombre = e.target.nombre.value.trim();
-      const edad = parseInt(e.target.edad.value);
-      const sexo = e.target.sexo.value;
-      const nivelEscolar = e.target.nivelEscolar.value.trim();
+// Start the overall application (questionnaire check first)
+document.addEventListener('DOMContentLoaded', initializeOverallApp);
 
-      if (!nombre || !nivelEscolar || !sexo || isNaN(edad) || edad <= 0) {
-        alert("Por favor, rellena todos los campos correctamente.");
-        return;
-      }
-
-      const datos = { nombre, edad, sexo, nivelEscolar };
-
-      fetch('https://script.google.com/macros/s/AKfycbyKeqWyX5AMp2omqQo0-wSR-ay4MeFS7ghbCSlfE18CRQMW8a0xuz1CMKws3m4HhJ8J/exec', {
-        method: 'POST',
-        body: JSON.stringify(datos),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(res => res.text())
-      .then(msg => {
-        console.log("Respuesta del servidor:", msg);
-        localStorage.setItem('hasCompletedQuestionnaire', 'true');
-        modal.style.display = 'none';
-        initialize(); // Iniciar la aplicación normalmente
-      })
-      .catch(err => {
-        console.error("Error al enviar los datos:", err);
-        alert("Ocurrió un error al enviar los datos. Por favor intenta nuevamente.");
-      });
-    });
-  } else {
-    initialize(); // Iniciar la aplicación normalmente
-  }
-}
-
-// Modificar la inicialización para usar la nueva función
-document.addEventListener('DOMContentLoaded', checkAndShowQuestionnaire);
-</script>
-
-<script>
-// Registro del Service Worker
+// Service Worker Registration (from original app)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
